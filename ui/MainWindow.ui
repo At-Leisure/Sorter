@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1287</width>
+    <height>970</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">#video_screen{/*视频幕布*/
+	color: white;
+	background-color: gray;
+	margin: 0px 0px;
+}
+#running_view{/*运行视图*/
+	color: white;
+	background-color: #616161;
+	margin: 0px 0px;
+}</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="7">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QStackedWidget" name="page_container">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="video_page">
+       <layout class="QVBoxLayout" name="verticalLayout_2" stretch="7,1">
+        <item>
+         <widget class="QLabel" name="video_screen">
+          <property name="font">
+           <font>
+            <pointsize>20</pointsize>
+            <italic>true</italic>
+            <underline>true</underline>
+           </font>
+          </property>
+          <property name="toolTip">
+           <string>视频幕布</string>
+          </property>
+          <property name="text">
+           <string>Video Screen</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QWidget" name="widget" native="true">
+          <widget class="QPushButton" name="video_button">
+           <property name="geometry">
+            <rect>
+             <x>550</x>
+             <y>30</y>
+             <width>141</width>
+             <height>61</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>播放</string>
+           </property>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="running_page">
+       <layout class="QVBoxLayout" name="verticalLayout_3" stretch="7,1">
+        <item>
+         <widget class="QLabel" name="running_view">
+          <property name="font">
+           <font>
+            <pointsize>20</pointsize>
+            <italic>true</italic>
+            <underline>true</underline>
+           </font>
+          </property>
+          <property name="toolTip">
+           <string>运行视图</string>
+          </property>
+          <property name="text">
+           <string>Running View</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QWidget" name="widget_2" native="true"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="config_page">
+       <widget class="QLabel" name="label_3">
+        <property name="geometry">
+         <rect>
+          <x>160</x>
+          <y>150</y>
+          <width>81</width>
+          <height>18</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>configure</string>
+        </property>
+       </widget>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1287</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_video">
+    <property name="title">
+     <string>视频(&amp;V)</string>
+    </property>
+    <addaction name="action"/>
+    <addaction name="action_2"/>
+    <addaction name="action_3"/>
+    <addaction name="separator"/>
+    <addaction name="action_6"/>
+   </widget>
+   <widget class="QMenu" name="menu_config">
+    <property name="title">
+     <string>配置(&amp;C)</string>
+    </property>
+    <addaction name="action_4"/>
+    <addaction name="action_5"/>
+    <addaction name="separator"/>
+    <addaction name="action_11"/>
+   </widget>
+   <widget class="QMenu" name="menu_run">
+    <property name="title">
+     <string>运行(&amp;R)</string>
+    </property>
+    <addaction name="separator"/>
+    <addaction name="action_9"/>
+   </widget>
+   <widget class="QMenu" name="menu_help">
+    <property name="title">
+     <string>帮助(&amp;H)</string>
+    </property>
+    <addaction name="action_12"/>
+   </widget>
+   <widget class="QMenu" name="menu_window">
+    <property name="title">
+     <string>窗口(&amp;W)</string>
+    </property>
+   </widget>
+   <addaction name="menu_video"/>
+   <addaction name="menu_run"/>
+   <addaction name="menu_config"/>
+   <addaction name="menu_window"/>
+   <addaction name="menu_help"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="action123">
+   <property name="text">
+    <string>123</string>
+   </property>
+  </action>
+  <action name="action">
+   <property name="text">
+    <string>选择新的...</string>
+   </property>
+  </action>
+  <action name="action_2">
+   <property name="text">
+    <string>打开当前的...</string>
+   </property>
+  </action>
+  <action name="action_3">
+   <property name="text">
+    <string>打开当前目录...</string>
+   </property>
+  </action>
+  <action name="action_4">
+   <property name="text">
+    <string>打开测试页面</string>
+   </property>
+  </action>
+  <action name="action_5">
+   <property name="text">
+    <string>打开调试窗口</string>
+   </property>
+  </action>
+  <action name="action_6">
+   <property name="text">
+    <string>进入视频页面</string>
+   </property>
+  </action>
+  <action name="action_9">
+   <property name="text">
+    <string>进入运行页面</string>
+   </property>
+  </action>
+  <action name="action_11">
+   <property name="text">
+    <string>进入配置页面</string>
+   </property>
+  </action>
+  <action name="action_12">
+   <property name="text">
+    <string>关于...</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>video_button</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>play_video()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>633</x>
+     <y>879</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>643</x>
+     <y>484</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>play_video()</slot>
+ </slots>
+</ui>
