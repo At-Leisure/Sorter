@@ -9,7 +9,6 @@ import time
 from threading import Thread
 import json
 import typing
-from PyQt5.QtCore import QObject
 
 # third-party module
 import cv2
@@ -38,7 +37,7 @@ class MainWindow(QMainWindow):
         self.video_screen: QLabel = self.ui.video_screen  # 视频幕布
         self.video_button: QPushButton = self.ui.video_button  # 播放按钮
         # 属性值
-        self.video_path = parse_path(config['video_path'])
+        self.video_path = config['视频链接']
         self.video_state = VideoState.FINISHED  # 设置为播放完成状态
         self.video_thread = None  # 视频播放线程
         self.video_break = False  # 视频中断信号
