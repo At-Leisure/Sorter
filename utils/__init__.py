@@ -2,6 +2,6 @@
 
 
 from .extension import *
-from .decorator import *
+from .deco import *
 from .function import *
 #from .subspace import *
