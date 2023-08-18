@@ -29,63 +29,105 @@ print("Received data:", received_data)
 # 关闭串口
 ser.close() """
 
-# 枚举
+
 @asEnumClass()
-class ServoId:
-    #挡板-0,1,2,3
-    BAFFLE_0,BAFFLE_1,BAFFLE_2,BAFFLE_4 = range(4)
-    #底板-水平,垂直
-    BOARD_VT,BOARD_HR = range(4,6)
-    #压缩(亚索yaso)出口,YASO_EXIT
-    range(6,8)
-    #机械臂上下-1,2，机械臂旋转，机械爪
-    ARM_UPDOWN_0,ARM_UPDOWN_1,ARM_ROTATE,ARM_CLAW  = range(8,12)
+class OrderID:
+    """ 指令序号枚举 """
+    # 舵机，步进电机，压缩装置
+    SERVO, PLANE, PRESS = range(3)
 
 
+@asEnumClass()
+class ServoID:
+    """ 舵机序号枚举 """
+    # 挡板-0,1,2,3
+    BAFFLE_0, BAFFLE_1, BAFFLE_2, BAFFLE_3 = range(4)
+    # 底板-水平,垂直
+    BOARD_VT, BOARD_HR = range(4, 6)
+    # 压缩(亚索yaso)出口,YASO_EXIT
+    range(6, 8)
+    # 机械臂上下-1,2，机械臂旋转，机械爪
+    ARM_UPDOWN_0, ARM_UPDOWN_1, ARM_ROTATE, ARM_CLAW = range(8, 12)
 
-class SerialMotor:
+
+class SerialMotor(serial.Serial):
     """ 封装串口 """
 
-    def __init__(self) -> None:
-        self.commands_ = []  # 指令队列
+    def __init__(self, port: str, rate: int = 100_0000, *args, **kwargs) -> None:
+        """ 封装串口的使用
+        ## Parameter
+        `port` - 串口号
+        `rate` - 波特率
+        ## Example
+        >>> smt = SerialMotor("COM3",152000) #创建对象
+        >>> smt.append_string('information') #发送字符串"""
+
+        serial.Serial.__init__(self, port, rate, *args, **kwargs)
+        self.send_list_ = []  # 发送队列 [(指令,时间戳),...]
+        self.gain_list_ = []  # 接受队列 [(指令,时间戳),...]
         self.serobj_ = None
-        # 串口对象
-        try:
-            print(*comports())
-            if os_name() == "Windows":
-                self.serobj_ = serial.Serial(
-                    str(comports()[0]).split()[0], 100_0000)
-            elif os_name() == 'Linux':
-                self.serobj_ = serial.Serial(comports()[0], 100_0000)
-            else:
-                raise OSError()
-        except OSError:
-            class SerNone:
-                pass
-            self.serobj_ = SerNone()
-            setattr(self.serobj_, "write", lambda s: print(f'串口未连接 {s}'))
-            setattr(self.serobj_, "close", lambda s: print(f'串口未连接 {s}'))
+
+        # 开启线程-时刻监听串口输入信号，子线程随主线程结束而结束
+        self.thread = Thread(target=self.__run, daemon=True, name='监听串口')
+        self.thread.start()
 
     def deinit(self):
         """ 析构函数 """
         self.serobj_.close()
 
-    def append(self, cmd: str):
+    def append_string(self, cmd: str):
         """ 追加新指令 """
-        self.commands_.append(cmd)
+        self.send_list_.append((cmd, time.time()))  # 给添加的指令附加一个时间戳
 
-    def __send(self):
-        """ 从队列中拿出一个指令，向串口发送该指令 """
-        if len(self.commands_) == 0:
-            print('暂无可发送的指令')
-            return
-        ...
-
-    def run(self):
+    def __run(self):
+        """ 不断监听从串口发向主机的信号 """
         while True:
-            for cmd in self.commands_:
-                if cmd[0]=='0':
-                    ...
+            # 监听信号
+            gain_string = self.read_all().decode('utf-8')  # 接收来自单片机的信息
+            if gain_string != '':  # 如果收到信号
+                time_tick = time.time()
+                self.gain_list_.append(
+                    (gain_string, time_tick))  # 给添加的指令附加一个时间戳
+                print(
+                    f'GAIN {{tick: {time_tick:16.5f}, string: {gain_string}}}')
+                
+                # 提示容器存量，防止未进行清理容器
+                print(f'INFO container{{tosend: {len(self.send_list_)}, gained: {len(self.gain_list_)}}}\n')
+                
+            #处理积存的接受单片机的信息
+
+            #发送信号
+            # 处理积存的发向单片机的信息，从队列中拿出指令，向串口发送该指令
+            delete_list = [] #此次需要清除的发送指令
+            for string, tick in self.send_list_:
+                if len(self.send_list_):  # 存在积存的信号
+                    # 判断指令类型
+                    if string[0] == str(OrderID.SERVO):  # 0-舵机
+                        time.sleep(0.01)#延时0.01s后直接发送
+                        delete_list.append(self.send_list_.index((string, tick)))#将该指令对应的下标加入清除列表
+                        print(f'SEND {{tick: {tick:16.5f}, string: {string}}}')
+                        self.write(string.encode('utf8'))
+                    elif string[0] == str(OrderID.PLANE):  # 1-电机
+                        ...
+                    elif string[0] == str(OrderID.PRESS):  # 2-压缩
+                        ...
+                    else:
+                        pass
+                    
+                    # 提示容器存量，防止未进行清理容器
+                    print(f'INFO container{{tosend: {len(self.send_list_)}, gained: {len(self.gain_list_)}}}\n')
+                    
+            #保证前面的下标不变，进行从后往前清除使用过的指令
+            for i in sorted(delete_list,reverse=True):#从小到大排序
+                print(i)
+                self.send_list_.pop(i)#从后往前删除
+                
+            
+            # 延时，等待下一次信息
+            time.sleep(0.001)
+            
+            
+
 
 
 class ServoMotor:
@@ -177,11 +219,42 @@ class PlaneMotor:
 if __name__ == '__main__':
     print(*comports())
     if os_name() == "Windows":
-        ser = serial.Serial(
-            str(comports()[0]).split()[0], 100_0000)
+        ser_port = str(comports()[0]).split()[0]
     elif os_name() == 'Linux':
-        ser = serial.Serial(comports()[0], 100_0000)
+        ser_port = comports()[0]
     else:
         raise OSError()
 
-    ser.write(f'0{ServoId.ARM_UPDOWN_0}:0'.encode('utf8'))
+    smt = SerialMotor(ser_port)
+    
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_0}:0')
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_1}:0')
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_2}:0')
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_3}:0')
+
+    time.sleep(1)
+    
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_0}:100')
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_1}:100')
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_2}:100')
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_3}:100')
+    
+    time.sleep(1)
+    
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_0}:0')
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_1}:0')
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_2}:0')
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_3}:0')
+
+    time.sleep(1)
+    
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_0}:100')
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_1}:100')
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_2}:100')
+    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_3}:100')
+    
+    time.sleep(1)
+    smt.write(b'CALIBRAT')
+    time.sleep(1)
+    smt.write(b'12000:2000:5000')
+    time.sleep(5)
