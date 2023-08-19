@@ -64,7 +64,7 @@ class SerialMotor(serial.Serial):
 
         serial.Serial.__init__(self, port, rate, *args, **kwargs)
         self.send_list_ = []  # 发送队列 [(指令,时间戳),...]
-        self.gain_list_ = []  # 接受队列 [(指令,时间戳),...]
+        self.gain_list_ = [('PMOR', 0)]  # 接受队列 [(指令,时间戳),...]
         self.serobj_ = None
 
         # 开启线程-时刻监听串口输入信号，子线程随主线程结束而结束
@@ -82,52 +82,86 @@ class SerialMotor(serial.Serial):
     def __run(self):
         """ 不断监听从串口发向主机的信号 """
         while True:
+            # 发送信号 - 处理积存的发向单片机的信息，从队列中拿出指令，向串口发送该指令
+            delete_list = []  # 此次需要清除的发送指令
+            for string, tick in self.send_list_:
+                if len(self.send_list_):  # 存在积存的信号
+                    # 判断指令类型
+                    if string[0] == str(OrderID.SERVO):  # 0-舵机
+                        time.sleep(0.01)  # 延时0.01s后直接发送
+                        delete_list.append(self.send_list_.index(
+                            (string, tick)))  # 将该指令对应的下标加入清除列表
+                        print(f'SEND {{tick: {tick:16.5f}, string: {string}}}')
+                        self.write(string.encode('utf8'))
+
+                    elif string[0] == str(OrderID.PLANE):  # 1-电机
+                        # 在接收列表中查找是否有移动完成回馈，并采用最近一次的完成反馈
+                        can_move = False
+                        for s, t in reversed(self.gain_list_):
+                            if s == 'PMOR':
+                                can_move = True
+                                break  # 只用最近的反馈
+                        if can_move:
+                            time.sleep(0.01)  # 延时0.01s后直接发送
+                            delete_list.append(self.send_list_.index(
+                                (string, tick)))  # 将该指令对应的下标加入清除列表
+                            print(
+                                f'SEND {{tick: {tick:16.5f}, string: {string}}}')
+                            self.write(string.encode('utf8'))
+
+                            # 清除电机的所有完成反馈
+                            self.gain_list_ = [
+                                (s, t) for s, t in self.gain_list_ if s != 'PMOR']
+
+                        break  # 一次仅允许执行一次关于电机的指令
+
+                    elif string[0] == str(OrderID.PRESS):  # 2-压缩
+                        ...
+
+                    else:  # 复位或其他，直接发送
+                        delete_list.append(self.send_list_.index(
+                            (string, tick)))  # 加入清除列表
+                        print(
+                            f'SEND {{tick: {tick:16.5f}, string: {string}}}')
+                        self.write(string.encode('utf8'))
+
+                    # 提示容器存量，防止未进行清理容器
+                    print(
+                        f'SEND - INFO container{{tosend: {len(self.send_list_)}, gained: {len(self.gain_list_)}}}\n')
+                    print(
+                        f'SEND - INFO send:{[s for s,t in self.send_list_]}, gain:{[s for s,t in self.gain_list_]}')
+
+            # 保证前面的下标不变，进行从后往前清除使用过的指令
+            for i in sorted(delete_list, reverse=True):  # 从小到大排序
+                self.send_list_.pop(i)  # 从后往前删除
+
+            # 等待回馈
+
+            time.sleep(0.01)
+
             # 监听信号
-            gain_string = self.read_all().decode('utf-8')  # 接收来自单片机的信息
-            if gain_string != '':  # 如果收到信号
+            gain_string = self.read_all().decode(
+                'utf-8')[:-1]  # 接收来自单片机的信息，去除后缀'\x00'
+            if (gain_string  # 收到消息
+                    and not gain_string[0].isdigit()  # 拒收数字开头的消息
+                    and not gain_string == 'CALIBRAT'  # 拒收电机复位消息
+                    ):  # 收到信号 - 筛选信号
+
                 time_tick = time.time()
                 self.gain_list_.append(
                     (gain_string, time_tick))  # 给添加的指令附加一个时间戳
                 print(
                     f'GAIN {{tick: {time_tick:16.5f}, string: {gain_string}}}')
-                
+
                 # 提示容器存量，防止未进行清理容器
-                print(f'INFO container{{tosend: {len(self.send_list_)}, gained: {len(self.gain_list_)}}}\n')
-                
-            #处理积存的接受单片机的信息
 
-            #发送信号
-            # 处理积存的发向单片机的信息，从队列中拿出指令，向串口发送该指令
-            delete_list = [] #此次需要清除的发送指令
-            for string, tick in self.send_list_:
-                if len(self.send_list_):  # 存在积存的信号
-                    # 判断指令类型
-                    if string[0] == str(OrderID.SERVO):  # 0-舵机
-                        time.sleep(0.01)#延时0.01s后直接发送
-                        delete_list.append(self.send_list_.index((string, tick)))#将该指令对应的下标加入清除列表
-                        print(f'SEND {{tick: {tick:16.5f}, string: {string}}}')
-                        self.write(string.encode('utf8'))
-                    elif string[0] == str(OrderID.PLANE):  # 1-电机
-                        ...
-                    elif string[0] == str(OrderID.PRESS):  # 2-压缩
-                        ...
-                    else:
-                        pass
-                    
-                    # 提示容器存量，防止未进行清理容器
-                    print(f'INFO container{{tosend: {len(self.send_list_)}, gained: {len(self.gain_list_)}}}\n')
-                    
-            #保证前面的下标不变，进行从后往前清除使用过的指令
-            for i in sorted(delete_list,reverse=True):#从小到大排序
-                print(i)
-                self.send_list_.pop(i)#从后往前删除
-                
-            
+                print(
+                    f'GAIN - INFO container{{tosend: {len(self.send_list_)}, gained: {len(self.gain_list_)}}}\n')
+                print(
+                    f'GAIN - INFO send:{[s for s,t in self.send_list_]}, gain:{[s for s,t in self.gain_list_]}')
+
             # 延时，等待下一次信息
-            time.sleep(0.001)
-            
-            
-
+            time.sleep(0.01)
 
 
 class ServoMotor:
@@ -156,22 +190,13 @@ class ServoMotor:
         self.min_ = min_value
         self.value_ = initial_value
 
-        # 初始化外设
-        self.__execute_device()
-
-    def show_info(self):
-        print(
-            f"""ServoMotor{{ id:{self.id}, max:{self._max_v}, min:{self._min_v}, current:{self.current_v}  }}""")
-
     def __execute_device(self):
         """ 私有方法，发出串口指令，驱动外设 """
-        s = f'{0}{self.id}:{self.value_}'
-        print('send', s)
-        self.sermtr_.append(s)
+        self.sermtr_.append_string(f'{OrderID.SERVO}{self.id_}:{self.value_}')
 
     def rotate_to(self, v):
-        assert self._min_v <= v <= self._max_v, f'ServoMotor: 赋值不在合理范围，{v} 不在 {[self._min_v,self._max_v]} 区间'
-        self.current_v = v
+        assert self.min_ <= self.value_ <= self.max_, '范围超出'
+        self.value_ = v
         self.__execute_device()
 
 
@@ -185,6 +210,8 @@ class PlaneMotor:
         self.sermtr_ = serial_object
         self.x_max_ = max_x
         self.y_max_ = max_y
+        self.v_min_ = min_v
+        self.v_max_ = max_v
         self.x = 0  # 坐标x
         self.y = 0  # 坐标y
         self.v = 0  # 速度v
@@ -193,68 +220,45 @@ class PlaneMotor:
         if reset:
             self.call_reset()
 
-        # 初始化外设
-        self.__execute_device()
-
     def call_reset(self):
         """ 发送指令复位 """
-        self.sermtr_.append('复位指令')
+        self.sermtr_.append_string('CALIBRAT')
 
     def __execute_device(self):
         """ 私有方法，发送串口指令 """
-        s = f'{1}{self.x}:{self.y}:{self.v}'
-        print('[CMD]', s)
-        self.sermtr_.append(s)
+        self.sermtr_.append_string(
+            f'{OrderID.PLANE}{self.x}:{self.y}:{self.v}')
 
     def move_to(self, *, x, y, v):
-        assert self._min_x <= x <= self._max_x, f'PlaneSystem: 赋值不在合理范围，x={x} 不在 {[self._min_x,self._max_x]} 区间'
-        assert self._min_y <= y <= self._max_y, f'PlaneSystem: 赋值不在合理范围，y={y} 不在 {[self._min_y,self._max_y]} 区间'
-        assert self._min_v <= v <= self._max_v, f'PlaneSystem: 赋值不在合理范围，v={v} 不在 {[self._min_v,self._max_v]} 区间'
+        assert 0 <= x <= self.x_max_, 'x范围超出'
+        assert 0 <= y <= self.y_max_, 'y范围超出'
+        assert self.v_min_ <= v <= self.v_max_, 'x范围超出'
         self.x = x
         self.y = y
         self.v = v
         self.__execute_device()
 
 
-if __name__ == '__main__':
-    print(*comports())
-    if os_name() == "Windows":
-        ser_port = str(comports()[0]).split()[0]
-    elif os_name() == 'Linux':
-        ser_port = comports()[0]
-    else:
-        raise OSError()
+# 连接串口
+print(*comports())
+if os_name() == "Windows":
+    ser_port = str(comports()[0]).split()[0]
+elif os_name() == 'Linux':
+    ser_port = comports()[0]
+else:
+    raise OSError()
+smt = SerialMotor(ser_port)  # 派生类对象
 
-    smt = SerialMotor(ser_port)
-    
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_0}:0')
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_1}:0')
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_2}:0')
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_3}:0')
+s1 = ServoMotor(serial_id=ServoID.BAFFLE_1, serial_object=smt,
+                max_value=100, min_value=0, initial_value=0)
 
-    time.sleep(1)
-    
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_0}:100')
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_1}:100')
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_2}:100')
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_3}:100')
-    
-    time.sleep(1)
-    
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_0}:0')
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_1}:0')
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_2}:0')
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_3}:0')
+p = PlaneMotor(serial_object=smt, max_x=6500,
+               max_y=6500, min_v=500, max_v=10_000, reset=1)
+time.sleep(2)
 
-    time.sleep(1)
-    
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_0}:100')
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_1}:100')
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_2}:100')
-    smt.append_string(f'{OrderID.SERVO}{ServoID.BAFFLE_3}:100')
-    
-    time.sleep(1)
-    smt.write(b'CALIBRAT')
-    time.sleep(1)
-    smt.write(b'12000:2000:5000')
-    time.sleep(5)
+p.move_to(x=1000, y=5000, v=5000)
+p.move_to(x=5000, y=5000, v=5000)
+p.move_to(x=5000, y=1000, v=5000)
+p.move_to(x=1000, y=1000, v=5000)
+
+time.sleep(20)
