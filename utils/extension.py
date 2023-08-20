@@ -84,15 +84,15 @@ class SerialMotor(serial.Serial):
         while True:
             # 发送信号 - 处理积存的发向单片机的信息，从队列中拿出指令，向串口发送该指令
             delete_list = []  # 此次需要清除的发送指令
-            for string, tick in self.send_list_:
-                if len(self.send_list_):  # 存在积存的信号
+            if len(self.send_list_):  # 存在积存的信号
+                for i in range(len(self.send_list_)):
+                    string, tick = self.send_list_[i]
                     # 判断指令类型
                     if string[0] == str(OrderID.SERVO):  # 0-舵机
                         time.sleep(0.01)  # 延时0.01s后直接发送
-                        delete_list.append(self.send_list_.index(
-                            (string, tick)))  # 将该指令对应的下标加入清除列表
+                        delete_list.append(i)  # 将该指令对应的下标加入清除列表
                         print(f'SEND {{tick: {tick:16.5f}, string: {string}}}')
-                        self.write(string.encode('utf8'))
+                        self.write(string.encode('utf-8'))
 
                     elif string[0] == str(OrderID.PLANE):  # 1-电机
                         # 在接收列表中查找是否有移动完成回馈，并采用最近一次的完成反馈
@@ -102,9 +102,9 @@ class SerialMotor(serial.Serial):
                                 can_move = True
                                 break  # 只用最近的反馈
                         if can_move:
-                            time.sleep(0.01)  # 延时0.01s后直接发送
-                            delete_list.append(self.send_list_.index(
-                                (string, tick)))  # 将该指令对应的下标加入清除列表
+                            time.sleep(0.1)  # 延时0.01s后直接发送
+                            delete_list.append(i)  # 将该指令对应的下标加入清除列表
+
                             print(
                                 f'SEND {{tick: {tick:16.5f}, string: {string}}}')
                             self.write(string.encode('utf8'))
@@ -131,21 +131,23 @@ class SerialMotor(serial.Serial):
                     print(
                         f'SEND - INFO send:{[s for s,t in self.send_list_]}, gain:{[s for s,t in self.gain_list_]}')
 
-            # 保证前面的下标不变，进行从后往前清除使用过的指令
-            for i in sorted(delete_list, reverse=True):  # 从小到大排序
-                self.send_list_.pop(i)  # 从后往前删除
+            # 保证前面的下标不变，清除使用过的指令
+            self.send_list_ = [self.send_list_[i] for i in range(
+                len(self.send_list_)) if not i in delete_list]
+
+            print(
+                f'SEND - INFO container{{tosend: {len(self.send_list_)}, gained: {len(self.gain_list_)}}}\n')
 
             # 等待回馈
-
             time.sleep(0.01)
 
             # 监听信号
             gain_string = self.read_all().decode(
                 'utf-8')[:-1]  # 接收来自单片机的信息，去除后缀'\x00'
             if (gain_string  # 收到消息
-                    and not gain_string[0].isdigit()  # 拒收数字开头的消息
-                    and not gain_string == 'CALIBRAT'  # 拒收电机复位消息
-                    ):  # 收到信号 - 筛选信号
+                and not gain_string[0].isdigit()  # 拒收数字开头的消息
+                and not gain_string == 'CALIBRAT'  # 拒收电机复位消息
+                ):  # 收到信号 - 筛选信号
 
                 time_tick = time.time()
                 self.gain_list_.append(
@@ -167,7 +169,7 @@ class SerialMotor(serial.Serial):
 class ServoMotor:
     """ 舵机-基类 """
 
-    def __init__(self, *, serial_id: int = None, serial_object: SerialMotor = None, max_value: int = None, min_value: int = None, initial_value: int = None) -> None:
+    def __init__(self, *, serial_id: int = None, serial_object: SerialMotor = None, max_value: int = None, min_value: int = None, initial_value: int = None, reset=True) -> None:
         """ 舵机-初始化
         ## Parameter
         `serial_id` - 串口信息id
@@ -190,28 +192,39 @@ class ServoMotor:
         self.min_ = min_value
         self.value_ = initial_value
 
+        # 初始复位
+        if reset:
+            self.rotate_to(initial_value)
+
     def __execute_device(self):
         """ 私有方法，发出串口指令，驱动外设 """
         self.sermtr_.append_string(f'{OrderID.SERVO}{self.id_}:{self.value_}')
 
     def rotate_to(self, v):
+        """ 控制旋转角度 """
         assert self.min_ <= self.value_ <= self.max_, '范围超出'
         self.value_ = v
         self.__execute_device()
 
 
+@asEnumClass()
+class PlaneState:
+    """ 电机状态枚举，运行中，暂停 """
+    RUNNING, LEISURE = range(2)
+
+
 class PlaneMotor:
     """ 平面移动-基类 """
 
-    def __init__(self, *, serial_object: SerialMotor = None, max_x: int = None, max_y: int = None, min_v: int = None, max_v: int = None, reset=True) -> None:
+    def __init__(self, serial_object: SerialMotor = None, reset=True) -> None:
         """  """
 
         # 赋初始值
         self.sermtr_ = serial_object
-        self.x_max_ = max_x
-        self.y_max_ = max_y
-        self.v_min_ = min_v
-        self.v_max_ = max_v
+        self.x_max_ = 6500
+        self.y_max_ = 6500
+        self.v_min_ = 200
+        self.v_max_ = 15_000
         self.x = 0  # 坐标x
         self.y = 0  # 坐标y
         self.v = 0  # 速度v
@@ -219,6 +232,7 @@ class PlaneMotor:
         # 初始复位
         if reset:
             self.call_reset()
+            time.sleep(1)#复位等待
 
     def call_reset(self):
         """ 发送指令复位 """
@@ -229,7 +243,9 @@ class PlaneMotor:
         self.sermtr_.append_string(
             f'{OrderID.PLANE}{self.x}:{self.y}:{self.v}')
 
-    def move_to(self, *, x, y, v):
+    def move_to(self, *, x, y, v=None):
+        """ 控制移动位置 """
+        v = v if not isinstance(v,type(None)) else 7000
         assert 0 <= x <= self.x_max_, 'x范围超出'
         assert 0 <= y <= self.y_max_, 'y范围超出'
         assert self.v_min_ <= v <= self.v_max_, 'x范围超出'
@@ -237,6 +253,124 @@ class PlaneMotor:
         self.y = y
         self.v = v
         self.__execute_device()
+
+
+@asEnumClass()
+class ArmStatus:
+    """ 机械臂的状态枚举 - 复位，向下抓取，向上抬起，向下丢落"""
+    RESET, GRAB_DOWN, LIFT_UP, DROP_DOWN = range(4)
+
+
+class StretchArm:
+    """ 伸缩臂 """
+
+    def __init__(self, serial_object: SerialMotor = None, reset: bool = True) -> None:
+        """ 初始化机械臂\n
+        `serial_object` - 传入串口对象
+        `reset` - 初始化同时复位"""
+        self.up_max_ = 115  # 上升最大值
+        self.rotate_max_ = 180  # 旋转最大值
+        self.claw_ratio = 1  # 爪子张角系数 = 图片中的长度 / 实际需要角度
+
+        self.updown_0_ = ServoMotor(serial_id=ServoID.ARM_UPDOWN_0, serial_object=serial_object,
+                                    max_value=self.up_max_, min_value=0, initial_value=self.up_max_, reset=False)  # 伸缩0号舵机
+        self.updown_1_ = ServoMotor(serial_id=ServoID.ARM_UPDOWN_1, serial_object=serial_object,
+                                    max_value=self.up_max_, min_value=0, initial_value=self.up_max_, reset=False)  # 伸缩1号舵机
+        self.rotation_ = ServoMotor(serial_id=ServoID.ARM_ROTATE, serial_object=serial_object,
+                                    max_value=self.rotate_max_, min_value=0, initial_value=0, reset=False)  # 旋转舵机
+        self.claw_ = ServoMotor(serial_id=ServoID.ARM_CLAW, serial_object=serial_object,
+                                max_value=100, min_value=0, initial_value=0, reset=False)  # 控制爪子的舵机
+
+        if reset:
+            self.call_reset()
+
+    def call_reset(self):
+        """ 复位 """
+        self.updown_0_.rotate_to(115)
+        self.updown_1_.rotate_to(115)
+        self.rotation_.rotate_to(0)
+        self.claw_.rotate_to(0)
+
+    def __uplift_to(self, distance):
+        """ 机械臂上升，以底板为垂直零点，向上为正值 \n
+        `distance` - 距离底板的距离(绝对距离),可取值int:[0-max],str:["max*0.5"]
+        ## Example
+        >>> self.__uplift_to(50) #上升为50单位
+        >>> self.__uplift_to("max*0.5") #上升为最大值的0.5倍"""
+        if isinstance(distance, str):
+            distance = int(float(distance.split('*')[-1]) * self.up_max_)
+        assert isinstance(distance, int), '只能是整形数值'
+        assert 0 <= distance <= self.up_max_, '范围不能超出'
+        self.updown_0_.rotate_to(distance)
+        self.updown_1_.rotate_to(distance)
+
+    def __rotate_to(self, rotate_angle):
+        """ 机械臂旋转 \n
+        `rotate_angle` - 旋转角度(单位°)(范围0-180)"""
+        assert 0 <= rotate_angle <= self.rotate_max_, '范围超出，区间仅限[0~180]'
+        k = 1  # 旋转比例
+        self.rotation_.rotate_to(rotate_angle*k)
+
+    def __grasp_to(self, claw_ratio: float):
+        """ 设定抓取角度 \n
+        `claw_ratio` - 爪子张角"""
+        assert 0 <= claw_ratio <= 1, '范围超出，区间仅限[0~1]'
+        self.claw_.rotate_to(int(100-claw_ratio*100))
+
+    def grab_down(self, distance, rotate_angle, claw_ratio):
+        """ 向下抓取 \n
+        `distance` - 距离底板的距离
+        `rotate_angle` - 旋转角度
+        `claw_ratio` - 张角幅度"""
+        self.__uplift_to(distance)
+        self.__rotate_to(rotate_angle)
+        self.__grasp_to(claw_ratio)
+
+    def lift_up(self, distance, rotate_angle=None, claw_ratio=None):
+        """ 向上抬起 \n
+        `distance` - 距离底板的距离
+        `rotate_angle` - 旋转角度，默认不采取
+        `claw_ratio` - 张角幅度"""
+        # 先抓后升
+        assert not isinstance(claw_ratio, type(None)), '张角幅度不允许为空'
+        self.__grasp_to(claw_ratio)
+        time.sleep(0.5)  # 给予足够的时间关闭爪子
+        self.__uplift_to(distance)
+        if not isinstance(rotate_angle, type(None)):
+            self.__rotate_to(rotate_angle)  # 默认不采取
+
+    def drop_down(self, distance, rotate_angle=None, claw_ratio=None):
+        """ 向下丢落 \n
+        `distance` - 距离底板的距离
+        `rotate_angle` - 旋转角度，默认不采取
+        `claw_ratio` - 张角幅度，默认不采取"""
+        # 先降后送
+        self.__uplift_to(distance)
+        time.sleep(0.5)  # 给予足够的时间下降
+        if not isinstance(rotate_angle, type(None)):
+            self.__rotate_to(rotate_angle)  # 默认不采取
+        if not isinstance(claw_ratio, type(None)):
+            self.__grasp_to(claw_ratio)  # 默认不采取
+
+    def test(self, v):
+        self.updown_0_.rotate_to(v)
+        self.updown_1_.rotate_to(v)
+        self.rotation_.rotate_to(v)
+        self.claw_.rotate_to(v)
+
+
+class PressMotor:
+    """ 压缩模块 """
+
+    def __init__(self) -> None:
+        pass
+
+    def reset(self):
+        """ 复位 """
+
+    def press(self):
+        """ 推进 """
+        ...
 
 
 # 连接串口
@@ -249,16 +383,21 @@ else:
     raise OSError()
 smt = SerialMotor(ser_port)  # 派生类对象
 
-s1 = ServoMotor(serial_id=ServoID.BAFFLE_1, serial_object=smt,
-                max_value=100, min_value=0, initial_value=0)
+s = StretchArm(smt)
+p = PlaneMotor(smt)
 
-p = PlaneMotor(serial_object=smt, max_x=6500,
-               max_y=6500, min_v=500, max_v=10_000, reset=1)
-time.sleep(2)
 
-p.move_to(x=1000, y=5000, v=5000)
-p.move_to(x=5000, y=5000, v=5000)
-p.move_to(x=5000, y=1000, v=5000)
-p.move_to(x=1000, y=1000, v=5000)
+time.sleep(1)
+p.move_to(x=3000,y=3000)
 
-time.sleep(20)
+time.sleep(3)
+s.grab_down(20, 0, 1)
+
+time.sleep(1)
+s.lift_up(100, None, 0.5)
+
+""" time.sleep(1)
+s.drop_down(0, None, 1) """
+
+time.sleep(1)
+p.move_to(x=0,y=0)
