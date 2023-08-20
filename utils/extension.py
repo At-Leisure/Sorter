@@ -169,7 +169,7 @@ class SerialMotor(serial.Serial):
 class ServoMotor:
     """ 舵机-基类 """
 
-    def __init__(self, *, serial_id: int = None, serial_object: SerialMotor = None, max_value: int = None, min_value: int = None, initial_value: int = None, reset=True) -> None:
+    def __init__(self, *, serial_id: int = None, serial_object: SerialMotor = None, max_value: int = 100, min_value: int = 0, initial_value: int = 0, reset=True) -> None:
         """ 舵机-初始化
         ## Parameter
         `serial_id` - 串口信息id
@@ -222,7 +222,7 @@ class PlaneMotor:
         # 赋初始值
         self.sermtr_ = serial_object
         self.x_max_ = 6500
-        self.y_max_ = 6500
+        self.y_max_ = 7500
         self.v_min_ = 200
         self.v_max_ = 15_000
         self.x = 0  # 坐标x
@@ -231,12 +231,16 @@ class PlaneMotor:
 
         # 初始复位
         if reset:
-            self.call_reset()
+            self.order_reset()
             time.sleep(1)#复位等待
 
-    def call_reset(self):
-        """ 发送指令复位 """
+    def order_reset(self):
+        """ 发送特定复位指令 """
         self.sermtr_.append_string('CALIBRAT')
+        
+    def move_reset(self):
+        """ 不使用CALIBRAT """
+        self.move_to(x=0,y=0)
 
     def __execute_device(self):
         """ 私有方法，发送串口指令 """
@@ -253,6 +257,10 @@ class PlaneMotor:
         self.y = y
         self.v = v
         self.__execute_device()
+        
+    def move_to_press(self):
+        """ 移动到压缩垃圾位置 """
+        self.move_to(x=4500,y=7500)
 
 
 @asEnumClass()
@@ -351,6 +359,8 @@ class StretchArm:
             self.__rotate_to(rotate_angle)  # 默认不采取
         if not isinstance(claw_ratio, type(None)):
             self.__grasp_to(claw_ratio)  # 默认不采取
+        time.sleep(0.5)
+        self.call_reset()
 
     def test(self, v):
         self.updown_0_.rotate_to(v)
@@ -384,20 +394,39 @@ else:
 smt = SerialMotor(ser_port)  # 派生类对象
 
 s = StretchArm(smt)
-p = PlaneMotor(smt)
+p = PlaneMotor(smt,0)
+f3 = ServoMotor(serial_id=ServoID.BAFFLE_3,serial_object=smt)
 
 
-time.sleep(1)
-p.move_to(x=3000,y=3000)
+for _ in range(10):
+    
+    f3.rotate_to(0)
 
-time.sleep(3)
-s.grab_down(20, 0, 1)
 
-time.sleep(1)
-s.lift_up(100, None, 0.5)
+    time.sleep(1)
+    p.move_to(x=3000,y=3000)
 
-""" time.sleep(1)
-s.drop_down(0, None, 1) """
+    time.sleep(3)
+    s.grab_down(20, 0, 1)
 
-time.sleep(1)
-p.move_to(x=0,y=0)
+    time.sleep(1)
+    s.lift_up("max*1", None, 0.5)
+
+
+    time.sleep(2)
+    p.move_to_press()
+    f3.rotate_to(100)
+
+
+    time.sleep(2 )
+    s.drop_down(20,None,1)
+    
+    
+    time.sleep(1)
+    s.call_reset()
+
+
+
+    time.sleep(2)
+    p.move_reset()
+    time.sleep(5)
