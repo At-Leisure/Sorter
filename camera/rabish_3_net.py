@@ -224,7 +224,6 @@ def draw(image, box_data):
             cropped_image = image[y_min - step_10: y_max + step_10, x_min - step_10: x_max + step_10]
         else:
             cropped_image = image[y_min : y_max , x_min : x_max ]
-
         min_side_length,max_side_length,angle = fangxiang(cropped_image,box)
         #cv2.imshow("cropped_image",cropped_image)
         cv2.rectangle(image, (top, left), (right, bottom), (255, 0, 0), 2)
@@ -279,7 +278,7 @@ def process(src,image,img_box):
         area = cv2.contourArea(box)
 
         max_side_length = 0
-        min_side_length = float('inf')  # 初始设置为无穷大
+        min_side_length = 1000000  # 初始设置为无穷大
         start_point = ()
         end_point = ()
 
@@ -318,13 +317,16 @@ def process(src,image,img_box):
 
     return image,min_side_length,max_side_length,angle_degrees
 def fangxiang(src,box):
+    min_side_length = 0
+    max_side_length = 0
+    angle = 0
     if src is not None and np.any(src):
         gaus_img = GausBlur(src)
         gray_img = Gray_img(gaus_img)
         thres_img = threshold_img(gray_img)
         cv2.imwrite('pic/pic.png', thres_img)
         image = cv2.cvtColor(thres_img, cv2.COLOR_GRAY2BGR)
-        _,min_side_length,max_side_length,angle = process(src,image,box)
+        none_v,min_side_length,max_side_length,angle = process(src,image,box)
     #cv2.imshow('result', result)
     return min_side_length,max_side_length,angle
 def threshold_img(src):
@@ -367,8 +369,10 @@ def scan_video(img):
     """ 从图片数据获取信息 """
     output, or_img = model.inference_cam(img)
     outbox = filter_box(output, 0.4, 0.4)
-    return draw(or_img, outbox)
-    #cv2.imshow('or_img', or_img)
+    results = draw(or_img, outbox)
+    cv2.imshow('or_img', or_img)
+    return results
+    
 
 
 

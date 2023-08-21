@@ -45,6 +45,13 @@ if __name__ == '__main__':
     v.set(cv2.CAP_PROP_FRAME_HEIGHT,1024)
     while v.isOpened():
         ret ,img = v.read()
-        cv2.imshow('im',img)
+        #cv2.imshow('im',img)
+        x = 200 
+        y = 100 
+        width = 800
+        hight = 800
+        
+        img = img[y:y + hight, x:x + width]
+        print(scan_from(img))
         cv2.waitKey(int(1000/60))
         
