@@ -9,6 +9,7 @@ import time
 from threading import Thread
 import json
 import typing
+import yaml
 
 # third-party module
 import cv2
@@ -19,11 +20,16 @@ from PyQt5.QtCore import *
 
 # local module
 from utils import *
-from prepare import *
+
+
+class VideoState(enum.Enum):
+    FINISHED, RUNNING = range(2)
+
 
 # 加载配置文件
-with open('./config.json', 'r', encoding='utf8') as f:
-    config: dict = json.load(fp=f)
+with open('./config.yml', 'r', encoding='utf8') as f:
+    config: dict = yaml.load(f,yaml.BaseLoader)
+    
 
 
 class MainWindow(QMainWindow):
@@ -37,7 +43,7 @@ class MainWindow(QMainWindow):
         self.video_screen: QLabel = self.ui.video_screen  # 视频幕布
         self.video_button: QPushButton = self.ui.video_button  # 播放按钮
         # 属性值
-        self.video_path = config['视频链接']
+        self.video_path = config['视频']
         self.video_state = VideoState.FINISHED  # 设置为播放完成状态
         self.video_thread = None  # 视频播放线程
         self.video_break = False  # 视频中断信号
@@ -86,10 +92,10 @@ class MainWindow(QMainWindow):
     def play_video(self):
         """ 创建一个新的线程用以播放视频 """
         # 如果正在播放，就打断当前播放，重新播放视频
-        if self.video_state == VideoState.RUNNING:
+        if self.video_state is VideoState.RUNNING:
             self.video_break = True
             # 等待视频中断
-            while self.video_state == VideoState.RUNNING:
+            while self.video_state is VideoState.RUNNING:
                 pass
         # 播放新的视频
         self.video_state = VideoState.RUNNING  # 设置为播放状态
