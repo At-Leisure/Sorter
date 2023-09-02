@@ -16,6 +16,7 @@ def scan_from(data: str) -> tuple: pass
 def scan_from(data: np.ndarray) -> tuple: pass
 
 
+
 def scan_from(data):
     """ 从图片中获取信息
     ## Parameter
@@ -46,11 +47,11 @@ if __name__ == '__main__':
     while v.isOpened():
         ret, img = v.read()
         # cv2.imshow('im',img)
-        x = 200
-        y = 100
-        width = 800
-        hight = 800
+        # x = 200
+        # y = 100
+        # width = 800
+        # hight = 800
 
-        img = img[y:y + hight, x:x + width]
+        # img = img[y:y + hight, x:x + width]
         print(scan_from(img))
         cv2.waitKey(int(1000/60))

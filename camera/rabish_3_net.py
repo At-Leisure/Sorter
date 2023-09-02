@@ -5,12 +5,22 @@ import serial
 import time
 import argparse
 import math
-CLASSES = ['recyclable',
-'hazardous',
-'kitchen',
-'other'
+CLASSES = ['hazardous_battery',
+'hazardous_bag',
+'hazardous_box',
+'hazardous_bottle',
+'hazardous_inner',
+'recycle_can',
+'recycle_water',
+'kitchen_potato',
+'kitchen_turnip',
+'kitchen_carrot',
+'other_porcelain',
+'other_cobblestone',
+'other_brick'
 ]
 
+onnx_dir = 'ra.onnx' #onnx模型的路径
 
 class YOLOV5():
     def __init__(self, onnxpath):
@@ -355,12 +365,12 @@ def threshold_img(src):
 #             break
 
 
-model = YOLOV5('./camera/best_2000.onnx')
+model = YOLOV5('./camera/ra.onnx')
 
 def scan_image(img_path):
     """ 从本地图片获取信息 """
     output, or_img = model.inference_pic(img_path)
-    outbox = filter_box(output, 0.4, 0.4)
+    outbox = filter_box(output, 0.7, 0.91)
     results = draw(or_img, outbox)
     #cv2.imshow('or_img', or_img)
     return results
@@ -368,7 +378,7 @@ def scan_image(img_path):
 def scan_video(img):
     """ 从图片数据获取信息 """
     output, or_img = model.inference_cam(img)
-    outbox = filter_box(output, 0.4, 0.4)
+    outbox = filter_box(output, 0.7, 0.91)
     results = draw(or_img, outbox)
     cv2.imshow('or_img', or_img)
     return results
@@ -379,7 +389,7 @@ def scan_video(img):
 if __name__ == "__main__":
     results = []
     onnxruntime.get_device()
-    model = YOLOV5('./camera/best_2000.onnx')
+    model = YOLOV5(onnx_dir)
     #ser=serget("COM7",9600,1)
     #serload(ser)
     #ser.close()  # 关闭串口
