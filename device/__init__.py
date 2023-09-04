@@ -31,13 +31,8 @@ class NamespaceMeta(type):
             raise TypeError('命名空间不需要实例化')
         attrs['__new__'] = limited_new
 
-        # 方法都是类方法 - 将方法都改为类方法
-        for key, value in attrs.items():
-            if isfunction(value):
-                attrs[key] = classmethod(value)
-            if key == '__init__':
-                raise TypeError('命名空间不需要实例化')
-            print(key)
+        if '__init__' in attrs.keys():
+            raise TypeError('命名空间不需要实例化')
         # 返回修改好的类名
         return super().__new__(cls, name, bases, attrs)
 
@@ -79,24 +74,30 @@ def get_serial() -> Serial:
 class OrderProcessor(metaclass=NamespaceMeta):
     """ 命名空间 - 指令处理器 """
     orders = []  # 指令容器
+    alternator = None
 
+    @classmethod
     def connect(cls, alternator: Serial) -> None:
         """ 指令处理器-构造函数\\
         `alternator` - 串口交流类"""
         cls.alternator = alternator
-        cls.thread = Thread(target=cls.target, daemon=True)
+        cls.thread = Thread(target=cls.target,name='指令处理器' ,daemon=True)
         cls.thread.start()
 
+    @classmethod
     def receive(cls, info_content: str = None, effective_time: float = time()):
         """ 接收新的指令载体
         `info_content` - 指令内容
         `effective_time` - 指令生效时刻"""
+        assert not cls.alternator is None, '[指令处理器]串口尚未连接，不能传输信息'
         cls.orders.append(OrderCarrier(info_content, effective_time))
 
+    @classmethod
     def execute(cls, info_content: str):
         """ 向单片机发出指令 """
         cls.alternator.write(info_content.encode('utf-8'))
 
+    @classmethod
     def target(cls):
         """ 循环遍历指令集 """
         while True:
@@ -108,6 +109,7 @@ class OrderProcessor(metaclass=NamespaceMeta):
                     # 执行后删除该指令
                     cls.orders.remove(carrier)
                     print(carrier, len(cls.orders))
+                    sleep(0.001)  # 延时防止两次指令间隔时间太短导致的指令无效
 
 # %%
 
@@ -121,8 +123,15 @@ CID = CommandID
 
 
 class SteeringID(Enum):
-    """ 挡板标号，挡板0-3 """
+    """ 舵机标号 """
+    # 挡板-0,1,2,3
     BAFFLE_0, BAFFLE_1, BAFFLE_2, BAFFLE_3 = range(4)
+    # 底板-水平,垂直
+    BOARD_VT, BOARD_HR = range(4, 6)
+    # 压缩(亚索yaso)出口,YASO_EXIT
+    range(6, 8)
+    # 机械臂上下-1,2，机械臂旋转，机械爪
+    ARM_UPDOWN_0, ARM_UPDOWN_1, ARM_ROTATE, ARM_CLAW = range(8, 12)
 
 
 SID = SteeringID
@@ -141,29 +150,54 @@ BS = BaffleStatus
 class Equipment(metaclass=NamespaceMeta):
     """ 命名空间 - 设备控制 """
     x, y = 0, 0
+    height_max = 110
 
-    def connect(cls, processor: OrderProcessor) -> None:
+    @classmethod
+    def connect(cls, processor) -> None:
         cls.processor = processor
 
-    def set_baffle(cls, status: BS, baffle_id: SID, *, timing: float = time()):
-        """ 根据舵机序号，设置挡板状态\\
+    @classmethod
+    def steer_set(cls, sid: SID, value: int, *, timing=time()):
+        """ 设置舵机状态 \\
         ## Parameter 
         `status` -  挡板状态
         `baffle_id` - 舵机ID
         `timing` - 定时时间，默认为即时执行 """
-        order = CID.STEERING  # 指令标号
-        angle = 100 if status is BS.OPEN else 0  # 预定角度
-        info = f'{order.value}{baffle_id.value:02d}:{angle:03d}'  # 信息内容
-        cls.processor.receive(info)  # 发送信息
 
-    def set_board(cls):
+        match sid:
+            case SID.BAFFLE_0 | SID.BAFFLE_1 | SID.BAFFLE_2 | SID.BAFFLE_3:
+                assert 0 <= value <= 100, f'挡板[{sid.value}]的值[{value}]非法'
+            case SID.ARM_UPDOWN_0 | SID.ARM_UPDOWN_1:
+                assert 0 <= value <= cls.height_max, f'伸缩值非法'
+            case SID.ARM_ROTATE:
+                assert 0 <= value <= 170, f'旋转值非法'
+
+        OrderProcessor.receive(
+            f'{CID.STEERING.value}{sid.value:02d}:{value:03d}', timing)
+
+    @classmethod
+    def steer_baffle(cls, status: BS, baffle_id: SID, *, timing: float = time()):
+        """ 根据舵机序号，设置挡板状态"""
+        value = 0 if status is BS.CLOSE else 100
+        cls.steer_set(baffle_id, value, timing=timing)
+
+    @classmethod
+    def steer_board(cls):
         """ 设置底板状态 """
         ...
 
+    @classmethod
+    def motor_set(cls, x, y, v, *, timing=time()):
+        """ 设置步进电机 """
+        OrderProcessor.receive(
+            f'{CID.STEPPING.value}{x}:{y}:{v}', timing)
+
+    @classmethod
     def motor_reset(cls, *, timing: float = time()):
         """ 通过指令让步进电机复位 """
         cls.processor.receive('CALIBRAT', time()+timing)
 
+    @classmethod
     def motor_move(cls, x, y, v=10_000, *, timing=time()) -> float:
         """ 返回移动所耗时间 
         ## Parameter
@@ -172,9 +206,7 @@ class Equipment(metaclass=NamespaceMeta):
         `v` - 移动速度
         ## Return
         `consume` - 此次移动耗时"""
-        order = CID.STEPPING  # 指令标号
-        info = f'{order.value}{x}:{y}:{v}'
-        cls.processor.receive(info, timing)
+        cls.motor_set(x, y, v, timing=timing)
 
         # 计算时间 TODO
         #
@@ -188,28 +220,79 @@ class Equipment(metaclass=NamespaceMeta):
         cls.x, cls.y = x, y
         return consume
 
+    @classmethod
+    def arm_updown(cls, height: int | str | float, *, timing=time()):
+        """ 控制上下高度
+        `height` - 爪子并拢时距离底板的高度 """
+        if isinstance(height, int):
+            value = height
+        elif isinstance(height, float):
+            value = int((height - int(height)) * cls.height_max)
+        elif height == 'max':
+            value = cls.height_max
+        cls.steer_set(SID.ARM_UPDOWN_0, value, timing=timing)
+        cls.steer_set(SID.ARM_UPDOWN_1, value, timing=timing)
+
+    @classmethod
+    def arm_rorate(cls, rotation: int, *, timing=time()):
+        """ 控制旋转角度 
+        `rotation` - 水平旋转角度"""
+        cls.steer_set(SID.ARM_ROTATE, rotation, timing=timing)
+
+    @classmethod
+    def arm_claw(cls, closing: int, *, timing=time()):
+        """ 控制爪子的张角大小
+        `closing` - 爪子闭合幅度 """
+        cls.steer_set(SID.ARM_CLAW, 100-closing, timing=timing)
+
+    @classmethod
+    def arm_reset(cls, *, timing=time()):
+        cls.arm_rorate(0,timing=timing)
+        cls.arm_updown('max',timing=timing)
+        cls.arm_claw(0,timing=timing)
+
+    @classmethod
+    def arm_pick_up(cls, rotation: int, height: int | str | float, spread: int = None, *, timing=time()):
+        """ 捡起物体 """
+        # 下落
+        cls.arm_rorate(rotation,timing=timing)
+        cls.arm_updown(0,timing=timing)
+        cls.arm_claw(100,timing=timing)
+        # 抓取
+        cls.arm_claw(spread,timing=timing+0.4)
+        #回升
+        cls.arm_updown('max',timing=timing+0.8)
+
 
 # %%
 if __name__ == '__main__':
-    ser = get_serial()
-    OrderProcessor.connect(ser)
+    OrderProcessor.connect(get_serial())
     Equipment.connect(OrderProcessor)
-    e = Equipment
-    # e.set_baffle(BS.OPEN, SID.BAFFLE_1)
-    t = e.motor_move(5000, 5000, 5000, timing=time()+2)
-    print(f'time_use {t} 秒')
-    e.motor_move(0, 0, timing=time()+t+2)
-    # e.motor_reset(timing=5)
+    # Equipment.steer_set(SID.BAFFLE_1, 100)
+    # Equipment.steer_baffle(BS.CLOSE, SID.BAFFLE_2)
+
+    # Equipment.motor_move(3000,3000)
+    # Equipment.grab_set(rotation=90, spread=0, height='max')
+    def test():
+        Equipment.arm_reset(timing=time())
+        delay = 2
+        Equipment.arm_pick_up(50, 0, 25, timing=time()+delay)
+    test()
 
     # 等待结束
     import tkinter as tk
     win = tk.Tk()
     win.title('外设测试程序 - ZYF')
+    win.wm_attributes('-topmost', 1)  # 置顶
+    win.wm_attributes('-toolwindow', 1)  # 工具窗
     W, H = win.winfo_screenwidth(), win.winfo_screenheight()
     w, h = 300, 75
     win.geometry(f'{w}x{h}+{(W-w)//2}+{(H-h)//3}')
     win['bg'] = '#dddddc'
-    btn = tk.Button(win, text='结束运行', font=(
+    btn = tk.Button(win, text='退出', fg='gray', font=(
         None, 20, 'bold'), command=win.destroy)
-    btn.place(x=50, y=15, width=200, height=50)
+    btn_test = tk.Button(win, text='测试', font=(
+        None, 20, 'bold'), command=test)
+    btn.place(x=25, y=15, width=100, height=50)
+    btn_test.place(x=10+125, y=15, width=150, height=50)
     win.mainloop()
