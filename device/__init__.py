@@ -81,7 +81,7 @@ class OrderProcessor(metaclass=NamespaceMeta):
         """ 指令处理器-构造函数\\
         `alternator` - 串口交流类"""
         cls.alternator = alternator
-        cls.thread = Thread(target=cls.target,name='指令处理器' ,daemon=True)
+        cls.thread = Thread(target=cls.target, name='指令处理器', daemon=True)
         cls.thread.start()
 
     @classmethod
@@ -156,6 +156,7 @@ class Equipment(metaclass=NamespaceMeta):
     def connect(cls, processor) -> None:
         cls.processor = processor
 
+    # %% steer
     @classmethod
     def steer_set(cls, sid: SID, value: int, *, timing=time()):
         """ 设置舵机状态 \\
@@ -182,9 +183,20 @@ class Equipment(metaclass=NamespaceMeta):
         cls.steer_set(baffle_id, value, timing=timing)
 
     @classmethod
-    def steer_board(cls):
-        """ 设置底板状态 """
-        ...
+    def steer_baffle_all(cls, status: BS, *, timing: float = time()):
+        """ 统一设置挡板状态 """
+        for sid in (SID.BAFFLE_0, SID.BAFFLE_1, SID.BAFFLE_2, SID.BAFFLE_3):
+            cls.steer_set(sid,0 if status is BS.CLOSE else 100,timing=timing)
+
+    @classmethod
+    def steer_board(cls, rotation: int=0, slope: int=0, *, timing: float = time()):
+        """ 设置底板状态 
+        `rotation` - 顺时针-水平旋转角度
+        `slope` - 顺时针-垂直倾斜角度"""
+        cls.steer_set(SID.BOARD_HR, rotation+50, timing=timing)  # 旋转
+        cls.steer_set(SID.BOARD_VT, slope+50, timing=timing+0.4)  # 倾斜
+
+    # %% motor
 
     @classmethod
     def motor_set(cls, x, y, v, *, timing=time()):
@@ -220,6 +232,8 @@ class Equipment(metaclass=NamespaceMeta):
         cls.x, cls.y = x, y
         return consume
 
+    # %% arm
+
     @classmethod
     def arm_updown(cls, height: int | str | float, *, timing=time()):
         """ 控制上下高度
@@ -247,21 +261,28 @@ class Equipment(metaclass=NamespaceMeta):
 
     @classmethod
     def arm_reset(cls, *, timing=time()):
-        cls.arm_rorate(0,timing=timing)
-        cls.arm_updown('max',timing=timing)
-        cls.arm_claw(0,timing=timing)
+        cls.arm_rorate(0, timing=timing)
+        cls.arm_updown('max', timing=timing)
+        cls.arm_claw(0, timing=timing)
 
     @classmethod
     def arm_pick_up(cls, rotation: int, height: int | str | float, spread: int = None, *, timing=time()):
         """ 捡起物体 """
         # 下落
-        cls.arm_rorate(rotation,timing=timing)
-        cls.arm_updown(0,timing=timing)
-        cls.arm_claw(100,timing=timing)
+        cls.arm_rorate(rotation, timing=timing)
+        cls.arm_updown(0, timing=timing)
+        cls.arm_claw(100, timing=timing)
         # 抓取
-        cls.arm_claw(spread,timing=timing+0.4)
-        #回升
-        cls.arm_updown('max',timing=timing+0.8)
+        cls.arm_claw(spread, timing=timing+0.4)
+        # 回升
+        cls.arm_updown('max', timing=timing+0.8)
+
+    @classmethod
+    def arm_throw_down(cls, *, timing=time()):
+        """ 丢落物体 """
+        cls.arm_updown(0, timing=timing)  # 下落
+        cls.arm_claw(100, timing=timing+0.4)  # 丢下
+        cls.arm_updown('max', timing=timing+0.8)  # 回升
 
 
 # %%
@@ -274,12 +295,16 @@ if __name__ == '__main__':
     # Equipment.motor_move(3000,3000)
     # Equipment.grab_set(rotation=90, spread=0, height='max')
     def test():
-        Equipment.arm_reset(timing=time())
-        delay = 2
-        Equipment.arm_pick_up(50, 0, 25, timing=time()+delay)
+        t = time()
+        Equipment.steer_baffle_all(BS.OPEN,timing=t)
+        
+        
+       
+        
+        Equipment.steer_baffle_all(BS.CLOSE,timing=t+5)
     test()
 
-    # 等待结束
+    # %% 等待结束
     import tkinter as tk
     win = tk.Tk()
     win.title('外设测试程序 - ZYF')
