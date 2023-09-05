@@ -5,7 +5,7 @@ from time import time, sleep
 from platform import platform
 from enum import Enum
 from inspect import isfunction, isclass
-import math
+from math import *
 # %% 第三方拓展库
 from icecream import ic
 from serial import Serial
@@ -153,10 +153,12 @@ class Equipment(metaclass=NamespaceMeta):
     """ 命名空间 - 设备控制 """
     x, y = 0, 0
     height_max = 110
+    yaso_max = 10
 
     @classmethod
     def connect(cls, processor) -> None:
         cls.processor = processor
+        
 
     # %% steer
     @classmethod
@@ -213,7 +215,7 @@ class Equipment(metaclass=NamespaceMeta):
         cls.processor.receive('CALIBRAT', time()+runtime)
 
     @classmethod
-    def motor_move(cls, x, y, v=10_000, *, runtime: float = None) -> float:
+    def motor_move(cls, x, y, v=10_000, *, runtime: float = None) -> float | :
         """ 返回移动所耗时间 
         ## Parameter
         `x` - 坐标x
@@ -229,7 +231,7 @@ class Equipment(metaclass=NamespaceMeta):
         # t = s/v
         #
         v_bar = (200+v)/2
-        s = int(math.sqrt((cls.x-x)**2+(cls.y-y)**2))  # 脉冲数
+        s = int(sqrt((cls.x-x)**2+(cls.y-y)**2))  # 脉冲数
         consume = s/v_bar
         # 更新状态
         cls.x, cls.y = x, y
@@ -273,7 +275,7 @@ class Equipment(metaclass=NamespaceMeta):
         """ 捡起物体 """
         # 下落
         cls.arm_rorate(rotation, runtime=runtime)
-        cls.arm_updown(0, runtime=runtime)
+        cls.arm_updown(height, runtime=runtime)
         cls.arm_claw(100, runtime=runtime)
         # 抓取
         cls.arm_claw(spread, runtime=runtime+0.4)
@@ -288,9 +290,30 @@ class Equipment(metaclass=NamespaceMeta):
         cls.arm_updown('max', runtime=runtime+0.8)  # 回升
 
     # %% 压缩(亚索yaso) TODO
+
+    @staticmethod
+    def yaso_convert(target) -> float:
+        """ 转换进制，距离值转化为转动值"""
+        raise NotImplementedError()
+
+    @classmethod
+    def yaso_set(cls, target: float, torsion: float, damp: float, *, runtime: float = None):
+        """ 设置宇树电机
+        `target` - 目标位置，调节缩进距离，推进板距离推进终点板的距离，单位cm
+        `torsion` - 位置系数，调节推进扭力
+        `damp` - 阻尼系数，调节减速阻力"""
+        assert 0 <= target <= cls.yaso_max, '缩进距离值非法'
+        assert 0 <= torsion <= 1, '扭力系数值非法'
+        assert 0 <= damp <= 1, '阻尼系数值非法'
+        # 将推进距离转化为转动弧度
+        angle = -target
+        OrderProcessor.receive(
+            f'{CID.UNITREE.value}{angle}:{torsion}:{damp}', runtime)
+
     @classmethod
     def yaso_reset(cls):
-        ...
+        cls.yaso_set(0, 0.1, 0.01)
+
 
 
 # %%
@@ -303,11 +326,7 @@ if __name__ == '__main__':
     # Equipment.motor_move(3000,3000)
     # Equipment.grab_set(rotation=90, spread=0, height='max')
     def test():
-        Equipment.steer_baffle_all(BS.OPEN)
-
-        Equipment.steer_baffle_all(BS.CLOSE, runtime=time()+5)
-    test()
-
+        ...
     # %% 等待结束
     import tkinter as tk
     win = tk.Tk()
