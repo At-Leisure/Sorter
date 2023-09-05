@@ -85,7 +85,7 @@ class OrderProcessor(metaclass=NamespaceMeta):
         cls.thread.start()
 
     @classmethod
-    def receive(cls, info_content: str = None, effective_time: float = time()):
+    def receive(cls, info_content: str = None, effective_time: float = None):
         """ 接收新的指令载体
         `info_content` - 指令内容
         `effective_time` - 指令生效时刻"""
@@ -103,7 +103,9 @@ class OrderProcessor(metaclass=NamespaceMeta):
         while True:
             for carrier in cls.orders:
                 # 指令休眠结束
-                if time() > carrier.effective_time:
+                # 生效时刻为空则默认立即执行，并且不会继续执行（time() > carrier.effective_time）语句
+                # 生效时刻超过当前时刻就立即执行
+                if carrier.effective_time is None or time() > carrier.effective_time:
                     # 向单片机发出指令
                     cls.execute(carrier.info_content)
                     # 执行后删除该指令
@@ -158,12 +160,12 @@ class Equipment(metaclass=NamespaceMeta):
 
     # %% steer
     @classmethod
-    def steer_set(cls, sid: SID, value: int, *, timing=time()):
+    def steer_set(cls, sid: SID, value: int, *, runtime: float = None):
         """ 设置舵机状态 \\
         ## Parameter 
         `status` -  挡板状态
         `baffle_id` - 舵机ID
-        `timing` - 定时时间，默认为即时执行 """
+        `runtime` - 定时时间，默认为即时执行 """
 
         match sid:
             case SID.BAFFLE_0 | SID.BAFFLE_1 | SID.BAFFLE_2 | SID.BAFFLE_3:
@@ -174,43 +176,44 @@ class Equipment(metaclass=NamespaceMeta):
                 assert 0 <= value <= 170, f'旋转值非法'
 
         OrderProcessor.receive(
-            f'{CID.STEERING.value}{sid.value:02d}:{value:03d}', timing)
+            f'{CID.STEERING.value}{sid.value:02d}:{value:03d}', runtime)
 
     @classmethod
-    def steer_baffle(cls, status: BS, baffle_id: SID, *, timing: float = time()):
+    def steer_baffle(cls, status: BS, baffle_id: SID, *, runtime: float = None):
         """ 根据舵机序号，设置挡板状态"""
         value = 0 if status is BS.CLOSE else 100
-        cls.steer_set(baffle_id, value, timing=timing)
+        cls.steer_set(baffle_id, value, runtime=runtime)
 
     @classmethod
-    def steer_baffle_all(cls, status: BS, *, timing: float = time()):
+    def steer_baffle_all(cls, status: BS, *, runtime: float = None):
         """ 统一设置挡板状态 """
         for sid in (SID.BAFFLE_0, SID.BAFFLE_1, SID.BAFFLE_2, SID.BAFFLE_3):
-            cls.steer_set(sid,0 if status is BS.CLOSE else 100,timing=timing)
+            cls.steer_set(sid, 0 if status is BS.CLOSE else 100,
+                          runtime=runtime)
 
     @classmethod
-    def steer_board(cls, rotation: int=0, slope: int=0, *, timing: float = time()):
+    def steer_board(cls, rotation: int = 0, slope: int = 0, *, runtime: float = None):
         """ 设置底板状态 
         `rotation` - 顺时针-水平旋转角度
         `slope` - 顺时针-垂直倾斜角度"""
-        cls.steer_set(SID.BOARD_HR, rotation+50, timing=timing)  # 旋转
-        cls.steer_set(SID.BOARD_VT, slope+50, timing=timing+0.4)  # 倾斜
+        cls.steer_set(SID.BOARD_HR, rotation+50, runtime=runtime)  # 旋转
+        cls.steer_set(SID.BOARD_VT, slope+50, runtime=runtime+0.4)  # 倾斜
 
     # %% motor
 
     @classmethod
-    def motor_set(cls, x, y, v, *, timing=time()):
+    def motor_set(cls, x, y, v, *, runtime: float = None):
         """ 设置步进电机 """
         OrderProcessor.receive(
-            f'{CID.STEPPING.value}{x}:{y}:{v}', timing)
+            f'{CID.STEPPING.value}{x}:{y}:{v}', runtime)
 
     @classmethod
-    def motor_reset(cls, *, timing: float = time()):
+    def motor_reset(cls, *, runtime: float = None):
         """ 通过指令让步进电机复位 """
-        cls.processor.receive('CALIBRAT', time()+timing)
+        cls.processor.receive('CALIBRAT', time()+runtime)
 
     @classmethod
-    def motor_move(cls, x, y, v=10_000, *, timing=time()) -> float:
+    def motor_move(cls, x, y, v=10_000, *, runtime: float = None) -> float:
         """ 返回移动所耗时间 
         ## Parameter
         `x` - 坐标x
@@ -218,7 +221,7 @@ class Equipment(metaclass=NamespaceMeta):
         `v` - 移动速度
         ## Return
         `consume` - 此次移动耗时"""
-        cls.motor_set(x, y, v, timing=timing)
+        cls.motor_set(x, y, v, runtime=runtime)
 
         # 计算时间 TODO
         #
@@ -235,7 +238,7 @@ class Equipment(metaclass=NamespaceMeta):
     # %% arm
 
     @classmethod
-    def arm_updown(cls, height: int | str | float, *, timing=time()):
+    def arm_updown(cls, height: int | str | float, *, runtime: float = None):
         """ 控制上下高度
         `height` - 爪子并拢时距离底板的高度 """
         if isinstance(height, int):
@@ -244,45 +247,50 @@ class Equipment(metaclass=NamespaceMeta):
             value = int((height - int(height)) * cls.height_max)
         elif height == 'max':
             value = cls.height_max
-        cls.steer_set(SID.ARM_UPDOWN_0, value, timing=timing)
-        cls.steer_set(SID.ARM_UPDOWN_1, value, timing=timing)
+        cls.steer_set(SID.ARM_UPDOWN_0, value, runtime=runtime)
+        cls.steer_set(SID.ARM_UPDOWN_1, value, runtime=runtime)
 
     @classmethod
-    def arm_rorate(cls, rotation: int, *, timing=time()):
+    def arm_rorate(cls, rotation: int, *, runtime: float = None):
         """ 控制旋转角度 
         `rotation` - 水平旋转角度"""
-        cls.steer_set(SID.ARM_ROTATE, rotation, timing=timing)
+        cls.steer_set(SID.ARM_ROTATE, rotation, runtime=runtime)
 
     @classmethod
-    def arm_claw(cls, closing: int, *, timing=time()):
+    def arm_claw(cls, closing: int, *, runtime: float = None):
         """ 控制爪子的张角大小
         `closing` - 爪子闭合幅度 """
-        cls.steer_set(SID.ARM_CLAW, 100-closing, timing=timing)
+        cls.steer_set(SID.ARM_CLAW, 100-closing, runtime=runtime)
 
     @classmethod
-    def arm_reset(cls, *, timing=time()):
-        cls.arm_rorate(0, timing=timing)
-        cls.arm_updown('max', timing=timing)
-        cls.arm_claw(0, timing=timing)
+    def arm_reset(cls, *, runtime: float = None):
+        cls.arm_rorate(0, runtime=runtime)
+        cls.arm_updown('max', runtime=runtime)
+        cls.arm_claw(0, runtime=runtime)
 
     @classmethod
-    def arm_pick_up(cls, rotation: int, height: int | str | float, spread: int = None, *, timing=time()):
+    def arm_pick_up(cls, rotation: int, height: int | str | float, spread: int = None, *, runtime: float = None):
         """ 捡起物体 """
         # 下落
-        cls.arm_rorate(rotation, timing=timing)
-        cls.arm_updown(0, timing=timing)
-        cls.arm_claw(100, timing=timing)
+        cls.arm_rorate(rotation, runtime=runtime)
+        cls.arm_updown(0, runtime=runtime)
+        cls.arm_claw(100, runtime=runtime)
         # 抓取
-        cls.arm_claw(spread, timing=timing+0.4)
+        cls.arm_claw(spread, runtime=runtime+0.4)
         # 回升
-        cls.arm_updown('max', timing=timing+0.8)
+        cls.arm_updown('max', runtime=runtime+0.8)
 
     @classmethod
-    def arm_throw_down(cls, *, timing=time()):
+    def arm_throw_down(cls, *, runtime: float = None):
         """ 丢落物体 """
-        cls.arm_updown(0, timing=timing)  # 下落
-        cls.arm_claw(100, timing=timing+0.4)  # 丢下
-        cls.arm_updown('max', timing=timing+0.8)  # 回升
+        cls.arm_updown(0, runtime=runtime)  # 下落
+        cls.arm_claw(100, runtime=runtime+0.4)  # 丢下
+        cls.arm_updown('max', runtime=runtime+0.8)  # 回升
+
+    # %% 压缩(亚索yaso) TODO
+    @classmethod
+    def yaso_reset(cls):
+        ...
 
 
 # %%
@@ -295,13 +303,9 @@ if __name__ == '__main__':
     # Equipment.motor_move(3000,3000)
     # Equipment.grab_set(rotation=90, spread=0, height='max')
     def test():
-        t = time()
-        Equipment.steer_baffle_all(BS.OPEN,timing=t)
-        
-        
-       
-        
-        Equipment.steer_baffle_all(BS.CLOSE,timing=t+5)
+        Equipment.steer_baffle_all(BS.OPEN)
+
+        Equipment.steer_baffle_all(BS.CLOSE, runtime=time()+5)
     test()
 
     # %% 等待结束
