@@ -1,11 +1,20 @@
 import tkinter as tk
-from device import *
+from time import time
+import device.api as DeviceAPI
 
-SorterAPI.init()
+DeviceAPI.init()
 
 
-def test():
-    SorterAPI.reset_arm()
+def test(event=None):
+    DeviceAPI.reset_move()
+    DeviceAPI.sequence_begin(runtime=time()+1)#开始
+    DeviceAPI.arm_move(4500,4500)
+    DeviceAPI.arm_pick_up(45,0,10)
+    DeviceAPI.arm_move(1000,6500)
+    DeviceAPI.arm_throw_down()
+    DeviceAPI.arm_move(0,0)
+    DeviceAPI.reset_arm()
+    DeviceAPI.sequence_finish()#结束
 
 # %% 等待结束
 win = tk.Tk()
@@ -22,4 +31,5 @@ btn_test = tk.Button(win, text='测试', font=(
     None, 20, 'bold'), command=test)
 btn.place(x=25, y=15, width=100, height=50)
 btn_test.place(x=10+125, y=15, width=150, height=50)
+win.bind('<KeyRelease-space>',test)
 win.mainloop()

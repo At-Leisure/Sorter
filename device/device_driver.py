@@ -33,6 +33,7 @@ class OrderProcessor(metaclass=NamespaceMeta):
         """ 指令处理器-构造函数\\
         `alternator` - 串口交流类"""
         cls.alternator = get_serial()
+        print(cls.alternator)
         cls.thread = Thread(target=cls.target, name='指令处理器', daemon=True)
         cls.thread.start()
 
@@ -123,6 +124,10 @@ class DeviceDriver(metaclass=NamespaceMeta):
         assert 1000 <= v <= cls.v_max,'V速度值非法'
         OrderProcessor.receive(
             f'{CID.STEPPING.value}{x}:{y}:{v}', runtime)
+        
+    @classmethod
+    def arm_move_reset(cls,*, runtime: float = None):
+        OrderProcessor.receive('CALIBRAT')
 
     @classmethod
     def arm_updown(cls, height: int | str | float, *, runtime: float = None):
