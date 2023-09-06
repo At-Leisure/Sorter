@@ -373,15 +373,15 @@ def scan_image(img_path):
     outbox = filter_box(output, 0.7, 0.91)
     results = draw(or_img, outbox)
     #cv2.imshow('or_img', or_img)
-    return results
+    return results,or_img
 
 def scan_video(img):
     """ 从图片数据获取信息 """
     output, or_img = model.inference_cam(img)
     outbox = filter_box(output, 0.7, 0.91)
     results = draw(or_img, outbox)
-    cv2.imshow('or_img', or_img)
-    return results
+    #cv2.imshow('or_img', or_img)
+    return results,or_img
     
 
 
