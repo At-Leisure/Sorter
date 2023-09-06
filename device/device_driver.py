@@ -64,7 +64,7 @@ class OrderProcessor(metaclass=NamespaceMeta):
                     # 执行后删除该指令
                     cls.orders.remove(carrier)
                     print(carrier, len(cls.orders))
-                    sleep(0.001)  # 延时防止两次指令间隔时间太短导致的指令无效
+                    sleep(0.005)  # 延时防止两次指令间隔时间太短导致的指令无效
 
 
 class DeviceDriver(metaclass=NamespaceMeta):
