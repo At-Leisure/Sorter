@@ -5,3 +5,4 @@
 
 from ._api import *
 from .device_driver import DeviceDriver
+from .speed_api import timeCalculate

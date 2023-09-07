@@ -8,6 +8,7 @@ device.baffle_set_all(1)
 #device.reset_arm()
 #device.DeviceDriver.yaso_press(0,0.01,0.01)
 
+
 def test(event=None):
     """  """
     #device.reset_move()
