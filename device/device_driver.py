@@ -27,6 +27,7 @@ class OrderProcessor(metaclass=NamespaceMeta):
     """ 命名空间 - 指令处理器 """
     orders = []  # 指令容器
     alternator = None
+    motor_cache = None
 
     @classmethod
     def connect(cls) -> None:
@@ -66,6 +67,16 @@ class OrderProcessor(metaclass=NamespaceMeta):
                     print(carrier, len(cls.orders))
                     sleep(0.005)  # 延时防止两次指令间隔时间太短导致的指令无效
 
+            cache = cls.alternator.read_all().decode('utf-8')
+            if cache and not cache[0].isdigit():
+                cls.motor_cache = cache
+                print(cache)
+
+    @classmethod
+    @property
+    def motor_usedtime(cls):
+        return cls.motor_cache
+
 
 class DeviceDriver(metaclass=NamespaceMeta):
     """ 命名空间 - 外设驱动 - 初步封装 """
@@ -98,7 +109,7 @@ class DeviceDriver(metaclass=NamespaceMeta):
                 assert 0 <= value <= 170, f'旋转值非法'
 
         OrderProcessor.receive(
-            f'{CID.STEERING.value}{sid.value:02d}:{value:03d}', runtime)
+            f'{CID.STEERING.value}:{sid.value:02d}:{value:03d}', runtime)
 
     @classmethod
     def board_rotate(cls, rotation: int = None,  *, runtime: float = None):
@@ -119,14 +130,14 @@ class DeviceDriver(metaclass=NamespaceMeta):
     @classmethod
     def arm_move(cls, x, y, v, *, runtime: float = None):
         """ 设置步进电机 """
-        assert 0 <= x <= cls.x_max,'X坐标值非法'
-        assert 0 <= y <= cls.y_max,'Y坐标值非法'
-        assert 1000 <= v <= cls.v_max,'V速度值非法'
+        assert 0 <= x <= cls.x_max, 'X坐标值非法'
+        assert 0 <= y <= cls.y_max, 'Y坐标值非法'
+        assert 1000 <= v <= cls.v_max, 'V速度值非法'
         OrderProcessor.receive(
-            f'{CID.STEPPING.value}{x}:{y}:{v}', runtime)
-        
+            f'{CID.STEPPING.value}:{x}:{y}:{v}', runtime)
+
     @classmethod
-    def arm_move_reset(cls,*, runtime: float = None):
+    def arm_move_reset(cls, *, runtime: float = None):
         OrderProcessor.receive('CALIBRAT')
 
     @classmethod
@@ -157,15 +168,16 @@ class DeviceDriver(metaclass=NamespaceMeta):
     # %% 压缩(亚索yaso)
 
     @classmethod
-    def yaso_press(cls, target: float, torsion: float, damp: float, *, runtime: float = None):
+    def yaso_press(cls, target: float, torsion: float, damp: float, *, runtime: float = None, ignore_assert: bool = False):
         """ 设置宇树电机
         `target` - 目标位置，调节缩进距离，推进板距离推进终点板的距离，单位cm
         `torsion` - 位置系数，调节推进扭力
         `damp` - 阻尼系数，调节减速阻力"""
-        assert 0 <= target <= cls.yaso_max, '缩进距离值非法'
-        assert 0 <= torsion <= 1, '扭力系数值非法'
-        assert 0 <= damp <= 1, '阻尼系数值非法'
+        if not ignore_assert:
+            assert 0 <= target <= cls.yaso_max, '缩进距离值非法'
+            assert 0 <= torsion <= 1, '扭力系数值非法'
+            assert 0 <= damp <= 1, '阻尼系数值非法'
         # 将推进距离转化为转动弧度
         angle = -target
         OrderProcessor.receive(
-            f'{CID.UNITREE.value}{angle}:{torsion}:{damp}', runtime)
+            f'{CID.UNITREE.value}:{angle}:{torsion}:{damp}', runtime)

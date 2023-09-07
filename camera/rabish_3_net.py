@@ -216,7 +216,7 @@ def draw(image, box_data):
         top, left, right, bottom = box
 
         x_min, y_min, x_max, y_max = box
-        step_50 = 25
+        step_50 = 10
         step_40 = 20
         step_30 = 15
         step_20 = 10
@@ -236,12 +236,12 @@ def draw(image, box_data):
             cropped_image = image[y_min : y_max , x_min : x_max ]
         min_side_length,max_side_length,angle = fangxiang(cropped_image,box)
         #cv2.imshow("cropped_image",cropped_image)
-        cv2.rectangle(image, (top, left), (right, bottom), (255, 0, 0), 2)
+        #cv2.rectangle(image, (top, left), (right, bottom), (255, 0, 0), 2)
         cv2.circle(image, ((top + right) // 2, (left + bottom) // 2), 5, (0, 0, 255), -1)
-        cv2.putText(image, '{0} {1:.2f}'.format(CLASSES[cl], score),
+        cv2.putText(image, '{0} {1:.2f} {2:.2f}'.format(CLASSES[cl], score ,angle),
                     (top, left),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6, (0, 0, 255), 2)
+                    0.6, (0, 0, 255), 2)#绘制标签
         result = (str(count), str(CLASSES[cl]), [str((top + right) // 2), str((left + bottom) // 2)], [str(int(min_side_length)),str(int(max_side_length))],str(int(angle)))
         results.append(result)
         #text = str(count) + " "+str(CLASSES[cl])+" " + str((top + right) // 2) + " " + str((left + bottom) // 2) + " " + str(int(min_side_length)) + " " + str(int(max_side_length)) + " " + str(int(angle))
@@ -305,6 +305,13 @@ def process(src,image,img_box):
         # print("矩形的短边长度为：", min_side_length)
         # print("矩形的最长边长度为：", max_side_length)
         # 计算起点到终点的向量
+        cv2.circle(src, (end_point[0], end_point[1]), 5, (0, 0, 255), -1)
+        cv2.circle(src, (start_point[0], start_point[1]), 5, (255, 0, 0), -1)
+
+        if end_point[1] < start_point[1]:
+            vector = (end_point[0] - start_point[0], end_point[1] - start_point[1])
+        else:
+            vector = (start_point[0] - end_point[0], start_point[1] - end_point[1])
         vector = (end_point[0] - start_point[0], end_point[1] - start_point[1])
         # 计算起点到X轴正方向的向量
         reference_vector = (1, 0)
@@ -319,8 +326,8 @@ def process(src,image,img_box):
         # print("终点坐标：", end_point)
         # print("旋转矩形的角度：", angle_degrees)
         cv2.line(src,start_point,end_point,(0,255,255),3)
-        cv2.drawContours(image, [box], -1, (0, 255, 0), 3)
-        #cv2.drawContours(src, [box], -1, (0, 255, 0), 3)
+        #cv2.drawContours(image, [box], -1, (0, 255, 0), 3)
+        cv2.drawContours(src, [box], -1, (0, 255, 0), 3)
         #cv2.putText(src, str(i + 1), (box[0][0], box[0][1]), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 111, 111), 3)
 
         i += 1
@@ -340,7 +347,7 @@ def fangxiang(src,box):
     #cv2.imshow('result', result)
     return min_side_length,max_side_length,angle
 def threshold_img(src):
-    ret, binary = cv2.threshold(src, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_TRIANGLE)
+    ret, binary = cv2.threshold(src, 0, 255,  cv2.THRESH_TRIANGLE)
     # print("threshold value %s" % ret)
     #cv2.imshow('threshold', binary)
     return binary

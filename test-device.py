@@ -1,20 +1,33 @@
 import tkinter as tk
+import device
 from time import time
-import device.api as DeviceAPI
 
-DeviceAPI.init()
+device.init()
 
+device.baffle_set_all(1)
+#device.reset_arm()
+#device.DeviceDriver.yaso_press(0,0.01,0.01)
 
 def test(event=None):
-    DeviceAPI.reset_move()
-    DeviceAPI.sequence_begin(runtime=time()+1)#开始
-    DeviceAPI.arm_move(4500,4500)
-    DeviceAPI.arm_pick_up(45,0,10)
-    DeviceAPI.arm_move(1000,6500)
-    DeviceAPI.arm_throw_down()
-    DeviceAPI.arm_move(0,0)
-    DeviceAPI.reset_arm()
-    DeviceAPI.sequence_finish()#结束
+    """  """
+    #device.reset_move()
+    device.sequence_begin(runtime=time()+1)#开始
+    device.arm_move(4000,4000)
+    device.arm_pick_up(45,0,10)
+    device.arm_move(4000,7500)
+    device.arm_throw_down(0)
+    device.arm_move(100,100)
+    device.reset_arm()
+    # # t = time()
+    # # device.DeviceDriver.yaso_press(9.99,0.99,0.005,runtime=t)
+    # # device.DeviceDriver.yaso_press(0,0.5,0.01,runtime=t+0.5)
+    device.sequence_finish()#结束
+    
+#device.reset_move()
+# device.DeviceDriver.arm_updown(0.2)
+# device.DeviceDriver.arm_claw(20)
+# device.arm_move(480,750)
+
 
 # %% 等待结束
 win = tk.Tk()

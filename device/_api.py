@@ -49,7 +49,7 @@ def baffle_set_all(status: bool, *, runtime: float = None):
     DeviceDriver.steer_set(SID.BAFFLE_3, value, runtime=runtime)
 
 
-def arm_move(x, y, v=10_000, *, runtime: float = None):
+def arm_move(x, y, v=5_000, *, runtime: float = None):
     """ 返回移动所耗时间 
     ## Parameter
     `x` - 坐标x
@@ -61,7 +61,7 @@ def arm_move(x, y, v=10_000, *, runtime: float = None):
 
     DeviceDriver.arm_move(x, y, v, runtime=runtime)
 
-    consume = (abs(MPU.x - x)+abs(MPU.y-y))/v+2
+    consume = (abs(MPU.x - x)+abs(MPU.y-y))/v+3
     MPU.add_time(consume)
 
     MPU.x = x
@@ -75,9 +75,9 @@ def arm_pick_up(rotation: int, height: int | str | float, spread: int = None, *,
     runtime = ttime() if MPU.time is None else MPU.time
     delay = (0.4, 0.4)
     # 抓
+    DeviceDriver.arm_claw(100, runtime=runtime)  # 开爪
     DeviceDriver.arm_rorate(rotation, runtime=runtime)  # 旋转
     DeviceDriver.arm_updown(height, runtime=runtime)  # 下落
-    DeviceDriver.arm_claw(100, runtime=runtime)  # 开爪
     # 收
     DeviceDriver.arm_claw(spread, runtime=runtime+sum(delay[:1]))  # 抓取
     DeviceDriver.arm_updown('max', runtime=runtime+sum(delay[:2]))  # 回升
@@ -86,7 +86,7 @@ def arm_pick_up(rotation: int, height: int | str | float, spread: int = None, *,
     return consume
 
 
-def arm_throw_down(*, runtime: float = None) -> float:
+def arm_throw_down(rotation: int, *, runtime: float = None) -> float:
     """ 丢落物体
     ## Return
     `consume` - 此次移动耗时 """
@@ -94,6 +94,7 @@ def arm_throw_down(*, runtime: float = None) -> float:
     delay = (0.4, 0.4)
     # 丢
     DeviceDriver.arm_updown(0, runtime=runtime)  # 下落
+    DeviceDriver.arm_rorate(rotation, runtime=runtime)  # 旋转
     DeviceDriver.arm_claw(100, runtime=runtime+sum(delay[:1]))  # 丢下
     # 收
     DeviceDriver.arm_updown('max', runtime=runtime+sum(delay[:2]))  # 回升
