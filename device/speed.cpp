@@ -10,7 +10,7 @@
 #define StartSpeed 100
 #define EndSpeed 15100
 #define SpeedStep 50
-#define EachSpeedStep 10
+#define EachSpeedStep 14
 #define TIMERINPUTCLOCK 84000000
 #define TimerFrequency 6000000
 #define SpeedChangeSegments (EndSpeed - StartSpeed) / SpeedStep

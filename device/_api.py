@@ -5,8 +5,10 @@ import tkinter as tk
 
 from .tools import *
 from .device_driver import DeviceDriver
+from .speed_api import timeCalculate
 
 OPEN, CLOSE = 1, 0
+default_speed = 10_000
 
 
 class ModulePropertyUnit:
@@ -49,7 +51,7 @@ def baffle_set_all(status: bool, *, runtime: float = None):
     DeviceDriver.steer_set(SID.BAFFLE_3, value, runtime=runtime)
 
 
-def arm_move(x, y, v=5_000, *, runtime: float = None):
+def arm_move(x: int, y: int, v: int = default_speed, *, runtime: float = None) -> float:
     """ 返回移动所耗时间 
     ## Parameter
     `x` - 坐标x
@@ -61,11 +63,13 @@ def arm_move(x, y, v=5_000, *, runtime: float = None):
 
     DeviceDriver.arm_move(x, y, v, runtime=runtime)
 
-    consume = (abs(MPU.x - x)+abs(MPU.y-y))/v+3
+    consume = timeCalculate(MPU.x-x, MPU.y-y, v)
     MPU.add_time(consume)
 
     MPU.x = x
     MPU.y = y
+
+    return consume
 
 
 def arm_pick_up(rotation: int, height: int | str | float, spread: int = None, *, runtime: float = None) -> float:

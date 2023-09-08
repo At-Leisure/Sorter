@@ -5,9 +5,8 @@ from time import time
 device.init()
 
 device.baffle_set_all(1)
-#device.reset_arm()
+device.reset_move()
 #device.DeviceDriver.yaso_press(0,0.01,0.01)
-
 
 def test(event=None):
     """  """
@@ -17,7 +16,7 @@ def test(event=None):
     device.arm_pick_up(45,0,10)
     device.arm_move(4000,7500)
     device.arm_throw_down(0)
-    device.arm_move(100,100)
+    device.arm_move(0,0)
     device.reset_arm()
     # # t = time()
     # # device.DeviceDriver.yaso_press(9.99,0.99,0.005,runtime=t)
