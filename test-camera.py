@@ -2,14 +2,14 @@ from time import time,sleep
 #
 import cv2
 #
-import camera.api as CAPI
+import camera as CMR
 #import device as DAPI
 
-CAPI.camera_init()
+CMR.camera_init()
 
 
 while 1:
-    im = CAPI.extract()
-    infos,im = CAPI.scan_from(im)
+    im = CMR.extract()
+    infos,im = CMR.scan_from(im)
     cv2.imshow('im',im)
     cv2.waitKey(1)

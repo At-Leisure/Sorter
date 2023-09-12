@@ -67,10 +67,6 @@ class OrderProcessor(metaclass=NamespaceMeta):
                     print(carrier, len(cls.orders))
                     sleep(0.005)  # 延时防止两次指令间隔时间太短导致的指令无效
 
-            cache = cls.alternator.read_all().decode('utf-8')
-            if cache and not cache[0].isdigit():
-                cls.motor_cache = cache
-                print(cache)
 
     @classmethod
     @property
