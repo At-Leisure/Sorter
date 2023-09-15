@@ -1,3 +1,4 @@
+""" GUI图形库 """
 # encoding:utf-8
 # file:main.py
 
@@ -18,9 +19,6 @@ from PyQt5.QtGui import *
 from PyQt5 import uic
 from PyQt5.QtCore import *
 
-# local module
-from utils import *
-
 
 class VideoState(enum.Enum):
     FINISHED, RUNNING = range(2)
@@ -29,7 +27,7 @@ class VideoState(enum.Enum):
 # 加载配置文件
 with open('./config.yml', 'r', encoding='utf8') as f:
     config: dict = yaml.load(f,yaml.BaseLoader)
-    
+print(config)
 
 
 class MainWindow(QMainWindow):

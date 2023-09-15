@@ -1,4 +1,3 @@
-
 """ 应用程序接口-API """
 # API-应用程序与外设驱动的桥梁
 # 目录包含顺序: {(API): (tools, device_driver); device_driver: (tools)}
@@ -8,6 +7,8 @@ import tkinter as tk
 from time import time as ttime
 from .device_driver import DeviceDriver
 from .speed_api import timeCalculate
+from icecream import ic
+from enum import Enum
 
 
 """ 命名空间 - 分拣操作API - 高层封装  """
@@ -78,6 +79,26 @@ def arm_move(x: int, y: int, v: int = default_speed, *, runtime: float = None) -
     return consume
 
 
+压缩垃圾 = 0
+厨余垃圾 = 1
+有害垃圾 = 2
+其他垃圾 = 3
+    
+def arm_move_to(kind:int):
+    """ 根据类型，移动到预定位置 """
+    if kind == 压缩垃圾:
+        arm_move(4000,8000)
+    elif kind == 厨余垃圾:
+        arm_move(50,8000)
+    elif kind == 有害垃圾:
+        arm_move(50,0)
+    elif kind == 其他垃圾:
+        arm_move(7000,50)
+    else:
+        raise ValueError(f'预定义中不存在[{kind}]值')
+    
+
+
 def arm_pick_up(rotation: int, height: int | str | float, spread: int = None, *, runtime: float = None) -> float:
     """ 捡起物体
     ## Return
@@ -145,10 +166,12 @@ def sequence_finish(): ...
 def wait_tkinter(test_func=None) -> tk.Tk:
     def func_type(*args, **kwargs):
         print('提示：未定义测试执行函数')
-    func_type = func_type if test_func is None else func_type
-
-    def command(event, *args, **kwargs):
-        func_type()
+    print(test_func is None)
+    def command(event=None, *args, **kwargs):
+        if test_func is None:
+            func_type()
+        else:
+            test_func()
     win = tk.Tk()
     win.title('外设测试程序 - ZYF')
     win.wm_attributes('-topmost', 1)  # 置顶
@@ -160,7 +183,7 @@ def wait_tkinter(test_func=None) -> tk.Tk:
     btn = tk.Button(win, text='退出', fg='gray', font=(
         None, 20, 'bold'), command=win.destroy)
     btn_test = tk.Button(win, text='测试', font=(
-        None, 20, 'bold'), command=func_type)
+        None, 20, 'bold'), command=command)
     btn.place(x=25, y=15, width=100, height=50)
     btn_test.place(x=10+125, y=15, width=150, height=50)
     win.bind('<KeyRelease-space>', command)

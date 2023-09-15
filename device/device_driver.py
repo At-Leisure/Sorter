@@ -79,7 +79,7 @@ class DeviceDriver(metaclass=NamespaceMeta):
     height_max = 110  # 爪子最大高度
     yaso_max = 10  # 压缩最大弧度
     x_max = 7000
-    y_max = 7500
+    y_max = 8000
     v_max = 13_000
 
     @classmethod
@@ -126,9 +126,9 @@ class DeviceDriver(metaclass=NamespaceMeta):
     @classmethod
     def arm_move(cls, x, y, v, *, runtime: float = None):
         """ 设置步进电机 """
-        assert 0 <= x <= cls.x_max, 'X坐标值非法'
-        assert 0 <= y <= cls.y_max, 'Y坐标值非法'
-        assert 1000 <= v <= cls.v_max, 'V速度值非法'
+        assert 0 <= x <= cls.x_max, f'X坐标值[{x}]非法'
+        assert 0 <= y <= cls.y_max, f'Y坐标值[{y}]非法'
+        assert 1000 <= v <= cls.v_max, f'V速度值[{v}]非法'
         OrderProcessor.receive(
             f'{CID.STEPPING.value}:{x}:{y}:{v}', runtime)
 

@@ -11,7 +11,7 @@ cap = None
 CAP_WIDTH_MAX = 1280
 CAP_HEIGHT_MAX = 1024
 
-def camera_init():
+def init():
     """ 连接相机 """
     global cap
     cap = cv2.VideoCapture(1)
@@ -38,11 +38,17 @@ def scan_from(data: str | np.ndarray):
     >>> scan_from()
     [('1', 'recyclable', ['184', '349'], ['225', '507'], '89'), ('2', 'recyclable', ['444', '352'], ['235', '508'], '90')]"""
     if isinstance(data, str):
-        return scan_image(data)
+        infos,draw = scan_image(data)
     elif isinstance(data, np.ndarray):
-        return scan_video(data)
+        infos,draw = scan_video(data)
     else:
         raise TypeError()
+    if not infos is None:
+        integral_infos = []
+        for index,category,(a,b),(c,d),rotation in infos:
+            integral_infos.append((int(index),category,(int(a),int(b)),(int(c),int(d)),int(rotation)))
+        return integral_infos,draw
+    return infos,draw
 
 
 
@@ -69,5 +75,5 @@ def image_to_robot_arm(image_x, image_y):
     robot_arm_y = int((image_y - image_min_y) * scale_factor_y + arm_min_y)
 
     # 返回实际机械臂坐标
-    print(robot_arm_x, robot_arm_y)
+    #print(robot_arm_x, robot_arm_y)
     return robot_arm_x, robot_arm_y
