@@ -1,0 +1,23 @@
+/*#left_widget{
+	background-color:#c1c1c1;
+}*/
+
+QWidget #view_widget{
+	background-color:#cdcdcd;
+}
+QLabel[isFullLabel=true]{/*满载提示统一设置*/
+	background-color:rgb(55,173,107);
+	color:white;
+	font:bold;
+	font-size:25px;
+}
+QLabel[isFulled=true]{/*满载变红*/
+	background-color:#c93756;
+}
+
+/*image-form*/
+QWidget [isImageForm=true]{
+        border: 2px solid gray;
+        border-radius: 3px;
+        padding: 5px;
+}

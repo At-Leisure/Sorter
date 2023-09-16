@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>throw_form</class>
+ <widget class="QWidget" name="throw_form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>330</width>
+    <height>167</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="a">
+     <property name="text">
+      <string>序号</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="b">
+     <property name="text">
+      <string>种类</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="c">
+     <property name="text">
+      <string>数量</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="d">
+     <property name="text">
+      <string>成否</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

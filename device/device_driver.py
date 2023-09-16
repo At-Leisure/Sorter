@@ -100,7 +100,7 @@ class DeviceDriver(metaclass=NamespaceMeta):
             case SID.BAFFLE_0 | SID.BAFFLE_1 | SID.BAFFLE_2 | SID.BAFFLE_3:
                 assert 0 <= value <= 100, f'挡板[{sid.value}]的值[{value}]非法'
             case SID.ARM_UPDOWN_0 | SID.ARM_UPDOWN_1:
-                assert 0 <= value <= cls.height_max, f'伸缩值非法'
+                assert -5 <= value <= cls.height_max, f'伸缩值非法'
             case SID.ARM_ROTATE:
                 assert 0 <= value <= 170, f'旋转值非法'
 
@@ -146,8 +146,8 @@ class DeviceDriver(metaclass=NamespaceMeta):
             value = int((height - int(height)) * cls.height_max)
         elif height == 'max':
             value = cls.height_max
-        cls.steer_set(SID.ARM_UPDOWN_0, value, runtime=runtime)
-        cls.steer_set(SID.ARM_UPDOWN_1, value, runtime=runtime)
+        cls.steer_set(SID.ARM_UPDOWN_0, value-5, runtime=runtime)
+        cls.steer_set(SID.ARM_UPDOWN_1, value-5, runtime=runtime)
 
     @classmethod
     def arm_rorate(cls, rotation: int, *, runtime: float = None):
