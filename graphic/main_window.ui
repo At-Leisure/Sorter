@@ -13,13 +13,15 @@
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">#state_widget{
+border: 3px solid gray;
+}</string>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout" stretch="11,1">
     <item>
-     <widget class="QStackedWidget" name="stackedWidget">
-      <widget class="QWidget" name="video_page"/>
-      <widget class="QWidget" name="work_page"/>
-     </widget>
+     <widget class="QStackedWidget" name="stackedWidget"/>
     </item>
     <item>
      <widget class="QWidget" name="state_widget" native="true">
@@ -37,6 +39,19 @@
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="state_button">
+       <property name="geometry">
+        <rect>
+         <x>190</x>
+         <y>20</y>
+         <width>112</width>
+         <height>34</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>切换</string>
        </property>
       </widget>
      </widget>

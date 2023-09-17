@@ -20,7 +20,7 @@ from PyQt5.QtCore import *
 
 
 class VideoState(enum.Enum):
-    FINISHED, RUNNING = range(2)
+    FINISHED, RUNNING, PAUSE = range(3)
 
 
 class VideoWidget(QWidget):
@@ -40,6 +40,10 @@ class VideoWidget(QWidget):
         self.video_thread = None  # 视频播放线程
         self.video_break = False  # 视频中断信号
 
+    def videoPause(self, is_pause: bool):
+        """ 睡眠暂停 """
+        self.video_state = VideoState.PAUSE if is_pause else VideoState.RUNNING
+
     def run(self):
         """ 新线程的目标任务 """
         video_capture = cv2.VideoCapture(self.video_path)  # 视频读取器
@@ -58,12 +62,15 @@ class VideoWidget(QWidget):
             target_width = int(resize_ratio*video_width)
             target_height = int(resize_ratio*video_height)
 
+            # 通过睡眠暂停
+            while self.video_state is VideoState.PAUSE:
+                time.sleep(0.01)
+
             if not self.video_break:
                 # 播放视频代码
                 useful, frame = video_capture.read()  # 读取当前帧
                 # 读取失败，播放结束
                 if useful == False:
-                    print('[INFO]Video read completed.')
                     break
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # 变化通道排列为RGB
                 image = cv2.resize(frame,
@@ -82,6 +89,7 @@ class VideoWidget(QWidget):
         # 更新状态，为下次播放做准备
         self.video_break = False
         self.video_state = VideoState.FINISHED
+        print('[INFO]Video read completed.')
 
     def play_video(self):
         """ 创建一个新的线程用以播放视频 """
@@ -94,7 +102,7 @@ class VideoWidget(QWidget):
         # 播放新的视频
         self.video_state = VideoState.RUNNING  # 设置为播放状态
         # 创建新的线程
-        self.video_thread = Thread(target=self.run, daemon=True)
+        self.video_thread = Thread(target=self.run, daemon=True,name='播放')
         self.video_thread.start()
 
 
