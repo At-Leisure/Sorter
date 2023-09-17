@@ -26,6 +26,8 @@ class VideoState(enum.Enum):
 class VideoWidget(QWidget):
     """ main window """
 
+    VS = VideoState
+
     def __init__(self, default_video_path: str):
         super(QWidget, self).__init__()
         # 动态加载ui文件
@@ -35,7 +37,7 @@ class VideoWidget(QWidget):
         self.video_button: QPushButton  # 播放按钮
         self.video_button.clicked.connect(self.play_video)
         # 属性值
-        self.progressBar : QProgressBar #显示进度
+        self.progressBar: QProgressBar  # 显示进度
         self.video_path = default_video_path
         self.video_state = VideoState.FINISHED  # 设置为播放完成状态
         self.video_thread = None  # 视频播放线程
@@ -50,14 +52,28 @@ class VideoWidget(QWidget):
         video_capture = cv2.VideoCapture(self.video_path)  # 视频读取器
         # 获取帧数和帧速率
         frame_count = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.progressBar.setRange(0,frame_count)
+        frame_rate = int(video_capture.get(cv2.CAP_PROP_FPS))
+        start_timetick = time.time()
+
+        # 计算视频时长（秒）
+        duration = int(frame_count / frame_rate)
+        self.progressBar.setRange(0, frame_count)
         # 播放每一帧
         frame_count_i = 0
+        frame_i = 0
+        iter_frame = 5
         while video_capture.isOpened():
-            #更新进度条
-            frame_count_i += 1
-            if frame_count_i <= frame_count-1:
-                self.progressBar.setValue(frame_count_i)#这里的值不能超出设置的范围，否则程序会直接退出
+            frame_i += 1
+            #每秒更新时长
+            if frame_i % frame_rate == 0:
+                # 更新按钮文本-剩余时长
+                rest_second = duration - frame_i//frame_rate
+                self.video_button.setText(
+                    f'{rest_second//60:02d}:{rest_second%60:02d}')
+            # 每帧更新进度条
+            if frame_i <= frame_count-1:
+                # 这里的值不能超出设置的范围，否则程序会直接退出
+                self.progressBar.setValue(frame_i)
             # 获取视频信息
             fps = int(video_capture.get(cv2.CAP_PROP_FPS))  # 视频帧率
             video_width = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -69,10 +85,6 @@ class VideoWidget(QWidget):
             # 实际显示尺寸
             target_width = int(resize_ratio*video_width)
             target_height = int(resize_ratio*video_height)
-
-            # 通过睡眠暂停
-            while self.video_state is VideoState.PAUSE:
-                time.sleep(0.01)
 
             if not self.video_break:
                 # 播放视频代码
@@ -94,10 +106,14 @@ class VideoWidget(QWidget):
             else:
                 # 打断播放
                 break
+
+            # 通过睡眠暂停-绘制完再暂停
+            while self.video_state is VideoState.PAUSE:
+                time.sleep(0.1)
         # 更新状态，为下次播放做准备
         self.video_break = False
         self.video_state = VideoState.FINISHED
-        print('[INFO]Video read completed.')
+        # print('[INFO]Video read completed.')
 
     def play_video(self):
         """ 创建一个新的线程用以播放视频 """
@@ -110,9 +126,9 @@ class VideoWidget(QWidget):
         # 播放新的视频
         self.video_state = VideoState.RUNNING  # 设置为播放状态
         # 创建新的线程
-        self.video_thread = Thread(target=self.run, daemon=True,name='播放')
+        self.video_thread = Thread(target=self.run, daemon=True, name='播放')
         self.video_thread.start()
-        print('[INFO]Video starts playing.')
+        # print('[INFO]Video starts playing.')
 
 
 # main threading

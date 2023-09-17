@@ -39,7 +39,7 @@ class MainWindow(QMainWindow):
         self.ui = uic.loadUi('./graphic/main_window.ui', self)
         # 可堆叠窗口
         self.stackedWidget: QStackedWidget
-        self.video_page = VideoWidget('./video/示例.mp4')  # 创建页
+        self.video_page = VideoWidget('./video/宣传.mp4')  # 创建页
         self.work_page = WorkWidget()
         self.stackedWidget.addWidget(self.video_page)  # 添加页
         self.stackedWidget.addWidget(self.work_page)

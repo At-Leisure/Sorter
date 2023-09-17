@@ -4,10 +4,7 @@ import enum
 from functools import partial
 from threading import Thread
 import typing
-import typing
 from PyQt5.QtWidgets import QWidget
-
-
 # third-party module
 import cv2
 import numpy as np
@@ -15,21 +12,36 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5 import QtCore, uic
 from PyQt5.QtCore import *
-#
+# api
 import camera as CMR
 import device as DVS
 import graphic as GRC
+#
+import time
 
 
 class SorterWindow(GRC.MainWindow):
     """ 最终界面 """
+
     def __init__(self, *args, **kwargs):
         GRC.MainWindow.__init__(self)
 
+        self.ctrl_thread = Thread(target=self.run, daemon=True, name='控制')
 
-def justRun(func):
-    func()
-    return func
+    def run(self):
+        """ 视频循环 and 分拣控制 """
+        while True:
+            # """ 视频循环 """
+            if self.video_page.video_state is self.video_page.VS.FINISHED:
+                self.video_page.play_video()  # 重新播放
+
+            # """ 流程控制 """
+
+            # 控制线程睡眠0.1s
+            time.sleep(0.1)
+
+
+def justRun(func): func()
 
 
 @justRun
@@ -41,4 +53,5 @@ def main():
     app.setStyleSheet(qss)
     window = SorterWindow()
     window.show()
+    window.ctrl_thread.start()  # 开启控制线程
     sys.exit(app.exec())
