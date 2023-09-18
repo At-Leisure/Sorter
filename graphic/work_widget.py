@@ -31,12 +31,13 @@ class ItemType(enum.Enum):
     GENERAL, RECYCLE, KITCHEN, HARMFUL = range(4)
 
 
-def setQLabelPixmap(lbl: QLabel, im_path: str):
+def setQLabelPixmap(lbl: QLabel, im: str | np.ndarray):
     """ 图片自适应填充标签显示 """
-    im = cv2.imread(im_path)
+    if isinstance(im, str):
+        im = cv2.imread(im)
     imH, imW = im.shape[:2]  # 图像的高宽
     lbH, lbW = lbl.height(), lbl.width()
-    minRatio = max(lbH/imH, lbW/imW)  # 最适缩放比
+    minRatio = min(lbH/imH, lbW/imW)  # 最适缩放比
     targetW, targetH = int(minRatio*imW), int(minRatio*imH)
     imRGB = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)  # 变化通道排列为RGB
     image = cv2.resize(imRGB, (targetW, targetH))  # 更改图片尺寸
@@ -51,33 +52,26 @@ def setQLabelPixmap(lbl: QLabel, im_path: str):
 
 class WorkImage(QWidget):
     """ Image-Widget """
-    @typing.overload
-    def __init__(self, parent, image_path: str):
-        """ 使用预定的图片文件 """
-    @typing.overload
-    def __init__(self, parent):
-        """ 普通构造函数 """
 
-    def __init__(self, *args, **kwargs) -> None:
-        super(QWidget, self).__init__()
+    def __init__(self, parent, image_path: str = './icon/pink_flash.png', *args, **kwargs) -> None:
+        super(QWidget, self).__init__(parent, *args, **kwargs)
         # 动态加载ui文件
         self.ui = uic.loadUi('./graphic/single_item.ui', self)
         # 函数重载实现
-        if len(args) > 0 and isinstance(args[1], str):
-            setQLabelPixmap(self.image_label, args[1])
+        setQLabelPixmap(self.image_label, image_path)
 
 
 class WorkThrow(QWidget):
     """ Throw-Widget """
 
-    def __init__(self, a: str, b: str, c: str, d: str, *args, **kwargs) -> None:
+    def __init__(self, parent, a: str, b: str, c: str, d: str, *args, **kwargs) -> None:
         """ 分拣完成提示-示例`1 有害垃圾 1 OK!`
         ## Parameters
         `a` - 序号
         `b` - 种类
         `c` - 数量
         `d` - 成否"""
-        super(QWidget, self).__init__()
+        super(QWidget, self).__init__(parent)
         # 动态加载ui文件
         self.ui = uic.loadUi('./graphic/throw_item.ui', self)
         self.a.setText(str(a))
@@ -98,6 +92,8 @@ class WorkWidget(QWidget):
         self.fullLoad_recycle: QLabel  # 可回收垃圾-满载提示
         self.fullLoad_kitchen: QLabel  # 厨余垃圾-满载提示
         self.fullLoad_harmful: QLabel  # 有害垃圾-满载提示
+        
+        self.work_screen :QLabel #播放屏幕
 
         self.image_scroll: QScrollArea
         self.image_scroll_queue = []  # 队列，先入先出
@@ -125,22 +121,22 @@ class WorkWidget(QWidget):
         lot = self.image_scroll.widget().layout()
         # QScrollArea的布局的调用只能通过scroll.widget()进行
         for _ in range(n1):
-            wim = WorkImage(self.image_scroll, './icon/pink_flash.png')
+            wim = WorkImage(self.image_scroll)
             wim.category_label.setText(f'类型：None')
             # 队列之末，弹簧之前
             self.image_scroll_queue.append(wim)
-            lot.insertWidget(-2,self.image_scroll_queue[-1])
+            lot.insertWidget(-2, self.image_scroll_queue[-1])
             # 底部有弹簧，防止控件在少量时分散
         # 右下侧添加示例
         lot = self.throw_scroll.widget().layout()
-        category = [0,0,0,0]
+        category = [0, 0, 0, 0]
         for i in range(n2):
-            j = randint(0,3)
+            j = randint(0, 3)
             category[j] += 1
-            wit = WorkThrow(i,j,category[j],'OK')
+            wit = WorkThrow(self.throw_scroll, i, j, category[j], 'OK')
             self.throw_scroll_queue.append(wit)
             # 队列之末，弹簧之前
-            lot.insertWidget(1,self.throw_scroll_queue[-1])
+            lot.insertWidget(1, self.throw_scroll_queue[-1])
 
     def updateImagesIndex(self):
         """ 更新投放列表的序号，从1开始 """
