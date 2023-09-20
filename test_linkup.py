@@ -35,7 +35,6 @@ def linkUpAPI(info):
     y = int(y / (640/1024))
 
     device.sequence_begin()
-    device.baffle_set_all(0)
     device.reset_arm()
     tx, ty = transform(x, y)
     device.arm_move(tx, ty)
@@ -45,6 +44,7 @@ def linkUpAPI(info):
     device.arm_throw_down(0)
     device.arm_move(200, 200)
     device.reset_arm()
+    device.baffle_set_all(0)
 
 
 def test():
