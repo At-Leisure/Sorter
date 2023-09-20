@@ -113,7 +113,8 @@ def arm_pick_up(rotation: int, height: int | str | float, spread: int = None, *,
     DeviceDriver.arm_updown(height, runtime=runtime+delay_k)  # 下落
     # 收
     DeviceDriver.arm_claw(spread, runtime=runtime+sum(delay[:1])+delay_k)  # 抓取
-    DeviceDriver.arm_updown('max', runtime=runtime+sum(delay[:2])+delay_k)  # 回升
+    DeviceDriver.arm_updown('max', runtime=runtime +
+                            sum(delay[:2])+delay_k)  # 回升
     consume = sum(delay)
     MPU.add_time(consume)
     return consume
@@ -147,6 +148,15 @@ def reset_arm(*, runtime: float = None):
 def reset_move(*, runtime: float = None):
     """ 通过指令让机械臂自动复位到(0,0)坐标 """
     DeviceDriver.arm_move_reset()
+
+
+def press_cans(n: int = 3, *, runtime: float = None):
+    """ 压缩易拉罐 """
+    runtime = ttime() if MPU.time is None else MPU.time
+    delay = 3
+    for i in range(n):
+        DeviceDriver.yaso_press(9,0.5,0.01,runtime=runtime+delay*i)
+        DeviceDriver.yaso_press(0,0.1,0.01,runtime=runtime+delay*i+0.3)
 
 
 def sequence_begin(*, runtime: float = None):

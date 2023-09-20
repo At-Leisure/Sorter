@@ -166,7 +166,7 @@ class DeviceDriver(metaclass=NamespaceMeta):
     @classmethod
     def yaso_press(cls, target: float, torsion: float, damp: float, *, runtime: float = None, ignore_assert: bool = False):
         """ 设置宇树电机
-        `target` - 目标位置，调节缩进距离，推进板距离推进终点板的距离，单位cm
+        `target` - 目标位置，调节缩进距离，推进板距离推进终点板的距离，单位cm，max=10
         `torsion` - 位置系数，调节推进扭力
         `damp` - 阻尼系数，调节减速阻力"""
         if not ignore_assert:

@@ -44,7 +44,7 @@ def linkUpAPI(info):
     device.arm_throw_down(0)
     device.arm_move(200, 200)
     device.reset_arm()
-    device.baffle_set_all(0)
+    device.baffle_set_all(1)
 
 
 def test():

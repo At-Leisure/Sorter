@@ -1,6 +1,9 @@
+
+
 # official module
 import sys
 import enum
+import time
 from functools import partial
 from threading import Thread
 import typing
@@ -18,7 +21,6 @@ import device as DVS
 import graphic as GRC
 from test_linkup import linkUpAPI
 #
-import time
 
 DVS.init()
 CMR.init()
