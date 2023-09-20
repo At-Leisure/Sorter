@@ -16,12 +16,17 @@ from PyQt5.QtCore import *
 import camera as CMR
 import device as DVS
 import graphic as GRC
+from test_linkup import linkUpAPI
 #
 import time
 
 DVS.init()
 CMR.init()
 
+
+
+
+    
 
 class SorterWindow(GRC.MainWindow):
     """ 最终界面 """
@@ -47,6 +52,7 @@ class SorterWindow(GRC.MainWindow):
                 self.changePageTo('work')
                 print(len(infos))
                 GRC.setQLabelPixmap(self.work_page.work_screen, draw)
+
             else:  # 切换到待机页面
                 self.changePageTo('video')
 

@@ -79,24 +79,25 @@ def arm_move(x: int, y: int, v: int = default_speed, *, runtime: float = None) -
     return consume
 
 
-压缩垃圾 = 0
-厨余垃圾 = 1
-有害垃圾 = 2
-其他垃圾 = 3
-    
-def arm_move_to(kind:int):
+class Kind(Enum):
+    回收垃圾 = 0
+    厨余垃圾 = 1
+    有害垃圾 = 2
+    其他垃圾 = 3
+
+
+def arm_move_to(kind: Kind):
     """ 根据类型，移动到预定位置 """
-    if kind == 压缩垃圾:
-        arm_move(4000,8000)
-    elif kind == 厨余垃圾:
-        arm_move(50,8000)
-    elif kind == 有害垃圾:
-        arm_move(50,0)
-    elif kind == 其他垃圾:
-        arm_move(7000,50)
+    if kind is Kind.回收垃圾:
+        arm_move(4000, 8000)
+    elif kind is Kind.厨余垃圾:
+        arm_move(50, 8000)
+    elif kind is Kind.有害垃圾:
+        arm_move(50, 0)
+    elif kind is Kind.其他垃圾:
+        arm_move(7000, 50)
     else:
         raise ValueError(f'预定义中不存在[{kind}]值')
-    
 
 
 def arm_pick_up(rotation: int, height: int | str | float, spread: int = None, *, runtime: float = None) -> float:
@@ -167,6 +168,7 @@ def wait_tkinter(test_func=None) -> tk.Tk:
     def func_type(*args, **kwargs):
         print('提示：未定义测试执行函数')
     print(test_func is None)
+
     def command(event=None, *args, **kwargs):
         if test_func is None:
             func_type()

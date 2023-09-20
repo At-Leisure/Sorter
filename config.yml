@@ -1,1 +1,22 @@
-视频: "./video/示例.mp4"
+视频: "./video/宣传.mp4"
+
+有害垃圾: 
+    - hazardous_battery
+    - hazardous_bag
+    - hazardous_box
+    - hazardous_bottle
+    - hazardous_inner
+
+回收垃圾:
+    - recycle_can
+    - recycle_water
+
+厨余垃圾:
+    - kitchen_potato
+    - kitchen_turnip
+    - kitchen_carrot
+
+其他垃圾:
+    - other_porcelain
+    - other_cobblestone
+    - other_brick
