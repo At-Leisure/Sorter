@@ -5,6 +5,7 @@ device.init()
 device.baffle_set_all(1)
 
 device.reset_move()
+device.reset_arm()
 def test():
     """ 测试 """
     device.sequence_begin()#开始

@@ -31,6 +31,8 @@ class SorterWindow(GRC.MainWindow):
 
         self.ctrl_thread = Thread(target=self.run, daemon=True, name='控制')
 
+# ==============================================视频循环 and 分拣控制=================================================#
+
     def run(self):
         """ 视频循环 and 分拣控制 """
         while True:
@@ -39,18 +41,19 @@ class SorterWindow(GRC.MainWindow):
                 self.video_page.play_video()  # 重新播放
 
             # """ 流程控制 """
-            raw_image = CMR.extract()#获得原始图像
-            infos,draw = CMR.scan_from(raw_image)#分析图像
-            if infos:#如果有识别到物件-切换到工作页面
+            raw_image = CMR.extract()  # 获得原始图像
+            infos, draw = CMR.scan_from(raw_image)  # 分析图像
+            if infos:  # 如果有识别到物件-切换到工作页面
                 self.changePageTo('work')
                 print(len(infos))
-                GRC.setQLabelPixmap(self.work_page.work_screen,draw)
-            else:#切换到待机页面
+                GRC.setQLabelPixmap(self.work_page.work_screen, draw)
+            else:  # 切换到待机页面
                 self.changePageTo('video')
-                
 
             # 控制线程睡眠0.1s-尝试不让此线程阻塞主线程
-            time.sleep(0.25)
+            time.sleep(0.1)
+
+# ========================================================================================================================#
 
 
 def justRun(func): func()
