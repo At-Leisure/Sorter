@@ -14,8 +14,8 @@ from threading import Thread
 # with open('./misc/坐标.txt', 'w', encoding='utf-8') as f:
 #     pass
 
-correcte_x = 2000
-correcte_y = -500
+correcte_x = 2200
+correcte_y = -300
 
 def transform(cx, cy):  # 《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《《坐标转换》
     """ 坐标转换函数：图像坐标->电机坐标 """
@@ -112,7 +112,7 @@ if __name__ == '__main__':
             device.init()
 
             W_raw, H_raw = 1280, 1024
-            ratio = 0.5
+            ratio = 0.7
             W_new, H_new = int(W_raw*ratio), int(H_raw*ratio)
 
             def lbl_bind(event: tk.Event):
@@ -166,8 +166,13 @@ if __name__ == '__main__':
             
             entry_bt = tk.Button(win,text='确认改参',command=entry_bt_func)
             
-            entry_dx.place(x=0,y=H_new,width=W_new//3,height=40)
-            entry_dy.place(x=W_new//3,y=H_new,width=W_new//3,height=40)
-            entry_bt.place(x=W_new//3*2,y=H_new,width=W_new//3,height=40)
+            def move_rst_func():
+                device.reset_move()
+            move_rst = tk.Button(win,text='RST',command=move_rst_func)
+            
+            entry_dx.place(x=0,y=H_new,width=W_new//4,height=40)
+            entry_dy.place(x=W_new//4,y=H_new,width=W_new//4,height=40)
+            entry_bt.place(x=W_new//4*2,y=H_new,width=W_new//4,height=40)
+            move_rst.place(x=W_new//4*3,y=H_new,width=W_new//4,height=40)
             
             win.mainloop()
