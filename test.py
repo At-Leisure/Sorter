@@ -7,6 +7,7 @@ from icecream import ic
 import device
 import camera
 from position import transform
+import screen
 
 
 with open('./config.yml', 'r', encoding='utf-8') as f:
@@ -99,5 +100,15 @@ if __name__ == '__main__':
                 device.arm_throw_down(0,kind=device.Kind.其他垃圾)
                 device.reset_arm()
             device.wait_tkinter(test)
-        
-    Tester.test_pickUp_throwDown()
+            
+        @staticmethod
+        def test_processWindow(init_mode:screen.PipeMode):
+            p = screen.runProcess()
+            screen.sendPipeMode(init_mode)
+            p.join()
+    
+    Tester.test_processWindow(screen.PipeMode.SET_WORK)
+    
+    
+    
+    

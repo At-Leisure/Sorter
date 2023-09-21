@@ -1,0 +1,13 @@
+QLabel[isFullLabel=true]{/*满载提示统一设置*/
+	background-color:rgb(55,173,107);/*背景色-默认绿色*/
+	color:white;/*字体颜色*/
+	font:bold;/*字体加粗*/
+	font-size:12pt;/*设置字点大小*/
+    qproperty-alignment: AlignCenter;/*上下居中*/
+}
+QLabel[isFulled=true]{/*满载变红*/
+	background-color:#c93756;/*红色*/
+}
+#label_screen{
+	background-color:gray;
+}

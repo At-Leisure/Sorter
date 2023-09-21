@@ -42,7 +42,7 @@ def scan_from(data: str | np.ndarray):
     elif isinstance(data, np.ndarray):
         infos,draw = scan_video(data)
     else:
-        raise TypeError()
+        raise TypeError(f'{type(data)} 类型非法')
     if not infos is None:
         integral_infos = []
         for index,category,(a,b),(c,d),rotation in infos:
