@@ -7,6 +7,7 @@ from platform import platform
 from enum import Enum
 from dataclasses import dataclass
 from inspect import isfunction, isclass
+import multiprocessing
 from math import *
 # 第三方拓展库
 from icecream import ic
@@ -23,55 +24,90 @@ class OrderCarrier:
     effective_time: float = None  # 指令生效时刻
 
 
+# class OrderProcessor(metaclass=NamespaceMeta):
+#     """ 命名空间 - 指令处理器 """
+#     orders = []  # 指令容器
+#     alternator = None
+#     motor_cache = None
+
+#     @classmethod
+#     def connect(cls) -> None:
+#         """ 指令处理器-构造函数\\
+#         `alternator` - 串口交流类"""
+#         cls.alternator = get_serial()
+#         print(cls.alternator)
+#         cls.thread = Thread(target=cls.target, name='指令处理器', daemon=True)
+#         cls.thread.start()
+
+#     @classmethod
+#     def receive(cls, info_content: str = None, effective_time: float = None):
+#         """ 接收新的指令载体
+#         `info_content` - 指令内容
+#         `effective_time` - 指令生效时刻"""
+#         assert not cls.alternator is None, '[指令处理器]串口尚未连接，不能传输信息'
+#         cls.orders.append(OrderCarrier(info_content, effective_time))
+
+#     @classmethod
+#     def execute(cls, info_content: str):
+#         """ 向单片机发出指令 """
+#         cls.alternator.write(info_content.encode('utf-8'))
+
+#     @classmethod
+#     def target(cls, queue: multiprocessing.Queue):
+#         """ 循环遍历指令集 """
+#         while True:
+#             for carrier in cls.orders:
+#                 # 指令休眠结束
+#                 # 生效时刻为空则默认立即执行，并且不会继续执行（time() > carrier.effective_time）语句
+#                 # 生效时刻超过当前时刻就立即执行
+#                 if carrier.effective_time is None or time() > carrier.effective_time:
+#                     # 向单片机发出指令
+#                     cls.execute(carrier.info_content)
+#                     # 执行后删除该指令
+#                     cls.orders.remove(carrier)
+#                     print(carrier, len(cls.orders))
+#                     sleep(0.005)  # 延时防止两次指令间隔时间太短导致的指令无效
+
+#     @classmethod
+#     @property
+#     def motor_usedtime(cls):
+#         return cls.motor_cache
+order_queue = multiprocessing.Queue()
+def orderProcessing(order_queue:multiprocessing.Queue):
+    orders = []
+    alternator = get_serial()
+    
+    def execute(info_content: str):
+        """ 向单片机发出指令 """
+        alternator.write(info_content.encode('utf-8'))
+    
+    while True:
+        for _ in range(order_queue.qsize()):
+            orders.append(order_queue.get())
+        for carrier in orders:
+            # 指令休眠结束
+            # 生效时刻为空则默认立即执行，并且不会继续执行（time() > carrier.effective_time）语句
+            # 生效时刻超过当前时刻就立即执行
+            if carrier.effective_time is None or time() > carrier.effective_time:
+                # 向单片机发出指令
+                execute(carrier.info_content)
+                # 执行后删除该指令
+                orders.remove(carrier)
+                print(carrier, len(orders))
+                sleep(0.005)  # 延时防止两次指令间隔时间太短导致的指令无效
+        
+    
 class OrderProcessor(metaclass=NamespaceMeta):
-    """ 命名空间 - 指令处理器 """
-    orders = []  # 指令容器
-    alternator = None
-    motor_cache = None
-
+    
     @classmethod
-    def connect(cls) -> None:
-        """ 指令处理器-构造函数\\
-        `alternator` - 串口交流类"""
-        cls.alternator = get_serial()
-        print(cls.alternator)
-        cls.thread = Thread(target=cls.target, name='指令处理器', daemon=True)
-        cls.thread.start()
-
+    def connect(cls):
+        cls.p = multiprocessing.Process(target=orderProcessing,args=(order_queue,),daemon=True,name='P指令处理')
+        cls.p.start()
+        
     @classmethod
     def receive(cls, info_content: str = None, effective_time: float = None):
-        """ 接收新的指令载体
-        `info_content` - 指令内容
-        `effective_time` - 指令生效时刻"""
-        assert not cls.alternator is None, '[指令处理器]串口尚未连接，不能传输信息'
-        cls.orders.append(OrderCarrier(info_content, effective_time))
-
-    @classmethod
-    def execute(cls, info_content: str):
-        """ 向单片机发出指令 """
-        cls.alternator.write(info_content.encode('utf-8'))
-
-    @classmethod
-    def target(cls):
-        """ 循环遍历指令集 """
-        while True:
-            for carrier in cls.orders:
-                # 指令休眠结束
-                # 生效时刻为空则默认立即执行，并且不会继续执行（time() > carrier.effective_time）语句
-                # 生效时刻超过当前时刻就立即执行
-                if carrier.effective_time is None or time() > carrier.effective_time:
-                    # 向单片机发出指令
-                    cls.execute(carrier.info_content)
-                    # 执行后删除该指令
-                    cls.orders.remove(carrier)
-                    print(carrier, len(cls.orders))
-                    sleep(0.005)  # 延时防止两次指令间隔时间太短导致的指令无效
-
-    @classmethod
-    @property
-    def motor_usedtime(cls):
-        return cls.motor_cache
-
+        order_queue.put(OrderCarrier(info_content, effective_time))
+        
 
 class DeviceDriver(metaclass=NamespaceMeta):
     """ 命名空间 - 外设驱动 - 初步封装 """
@@ -82,7 +118,7 @@ class DeviceDriver(metaclass=NamespaceMeta):
     v_max = 13_000
     arm_rotation = 0  # 当前旋转值
     """ 当前旋转值 """
-    
+
     @classmethod
     def connect(cls) -> None:
         OrderProcessor.connect()
