@@ -175,9 +175,14 @@ def _dispProcess(pipe_disp_: PipeConnection):
         qss = ''.join(f.readlines())
     app.setStyleSheet(qss)
     window = ProcessWindow('./video/示例.mp4')
+    # 设置窗口标志
+    window.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+    #Qt.FramelessWindowHint：隐藏窗口的标题栏和边框。
+    #Qt.WindowStaysOnTopHint：使窗口置顶显示
     window.setWindowTitle('Equipment of Garbage Sorting')
     window.setWindowIcon(QIcon('./icon/flash.png'))
     window.show()
+    window.move(0,0)
     sys.exit(app.exec_())
 
 
