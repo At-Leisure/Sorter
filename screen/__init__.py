@@ -67,6 +67,10 @@ pipe_disp = ...  # 占位声明
 pipe_ctrl, pipe_disp = multiprocessing.Pipe()
 
 
+CAP_WIDTH_MAX = 1280
+CAP_HEIGHT_MAX = 1024
+
+
 def _dispProcess(pipe_disp_: PipeConnection):
     with open('./config.yml', 'r', encoding='utf-8') as f:
         conf = yaml.load(f, yaml.BaseLoader)  # 配置.yml
@@ -85,6 +89,11 @@ def _dispProcess(pipe_disp_: PipeConnection):
             # 视频和摄像头地画面捕获器
             self.video_cap = cv2.VideoCapture(conf['视频'])  # 视频捕获器
             self.camera_cap = cv2.VideoCapture(1)  # 摄像头画面捕获器
+
+            self.camera_cap.set(cv2.CAP_PROP_FRAME_WIDTH,
+                                CAP_WIDTH_MAX)  # 设置帧的宽度和高度
+            self.camera_cap.set(cv2.CAP_PROP_FRAME_HEIGHT,
+                                CAP_HEIGHT_MAX)
             self.is_identifying = False  # 是否正在分类识别图像
             self.identify_period = 100  # 检测是否在识别中地降额间隔毫秒数
             self.work_mode = WorkMode.VIDEO  # 设置默认工作状态
@@ -156,7 +165,8 @@ def _dispProcess(pipe_disp_: PipeConnection):
                 ret, im = self.camera_cap.read()  # 1 重复以防止画面不是及时的
                 infos, draw = scan_from(im)
                 _coverQLabelByArray(self.label_screen,
-                                    draw)  # 更新识别画面
+                                    cv2.resize(draw, (1280, 1024)))  # 更新识别画面
+                print(draw.shape)
                 self.is_identifying = False  # 结束分类识别
 
     # 开启画面
