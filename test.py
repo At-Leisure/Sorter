@@ -107,7 +107,7 @@ if __name__ == '__main__':
             screen.sendPipeMode(init_mode)
             p.join()
     
-    Tester.test_processWindow(screen.PipeMode.SET_WORK)
+    Tester.test_processWindow(screen.PipeMode.SET_VIDEO)
     
     
     
