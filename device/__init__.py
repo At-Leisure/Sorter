@@ -104,18 +104,20 @@ def arm_pick_up(rotation: int, height: int | str | float, spread: int = None, *,
     """ 捡起物体
     ## Return
     `consume` - 此次移动耗时 """
+    global arm_rotation
     runtime = ttime() if MPU.time is None else MPU.time
-    delay = (0.1, 0.4)
+    delay = (0.3, 0.4)
     delay_k = 0.3
+    delay_ro = abs(rotation - DeviceDriver.arm_rotation)*0.01 #旋转用时
     # 抓
     DeviceDriver.arm_rorate(rotation, runtime=runtime)  # 旋转
-    DeviceDriver.arm_claw(100, runtime=runtime)  # 开爪
-    DeviceDriver.arm_updown(height, runtime=runtime+delay_k)  # 下落
+    DeviceDriver.arm_claw(100, runtime=runtime+delay_ro)  # 开爪
+    DeviceDriver.arm_updown(height, runtime=runtime+delay_k+delay_ro)  # 下落
     # 收
-    DeviceDriver.arm_claw(spread, runtime=runtime+sum(delay[:1])+delay_k)  # 抓取
+    DeviceDriver.arm_claw(spread, runtime=runtime+sum(delay[:1])+delay_k+delay_ro)  # 抓取
     DeviceDriver.arm_updown('max', runtime=runtime +
-                            sum(delay[:2])+delay_k)  # 回升
-    consume = sum(delay)
+                            sum(delay[:2])+delay_k+delay_ro)  # 回升
+    consume = sum(delay)+delay_k+delay_ro
     MPU.add_time(consume)
     return consume
 

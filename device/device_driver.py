@@ -67,7 +67,6 @@ class OrderProcessor(metaclass=NamespaceMeta):
                     print(carrier, len(cls.orders))
                     sleep(0.005)  # 延时防止两次指令间隔时间太短导致的指令无效
 
-
     @classmethod
     @property
     def motor_usedtime(cls):
@@ -81,7 +80,9 @@ class DeviceDriver(metaclass=NamespaceMeta):
     x_max = 7000
     y_max = 8000
     v_max = 13_000
-
+    arm_rotation = 0  # 当前旋转值
+    """ 当前旋转值 """
+    
     @classmethod
     def connect(cls) -> None:
         OrderProcessor.connect()
@@ -154,6 +155,7 @@ class DeviceDriver(metaclass=NamespaceMeta):
         """ 控制旋转角度 
         `rotation` - 水平旋转角度"""
         cls.steer_set(SID.ARM_ROTATE, rotation, runtime=runtime)
+        cls.arm_rotation = rotation  # 记录当先旋转值
 
     @classmethod
     def arm_claw(cls, closing: int, *, runtime: float = None):
