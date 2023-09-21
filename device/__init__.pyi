@@ -1,3 +1,11 @@
+'''
+Author: ZhouYaFei 1505536998@qq.com
+Date: 2023-09-19 21:54:55
+LastEditors: ZhouYaFei 1505536998@qq.com
+LastEditTime: 2023-09-21 08:31:02
+FilePath: \比赛程序\device\__init__.pyi
+Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+'''
 """ 命名空间 - 分拣操作API - 高层封装  """
 
 from time import time
@@ -28,7 +36,7 @@ def arm_pick_up(rotation: int, height: int | str | float,
                 spread: int = None, *, runtime: float = None) -> float: ...
 
 
-def arm_throw_down(*, runtime: float = None) -> float: ...
+def arm_throw_down(rotation: int, kind: Kind, *, runtime: float = None) -> float:...
 def reset_arm(*, runtime: float = None): ...
 def reset_move(*, runtime: float = None): ...
 def sequence_begin(*, runtime: float = None): ...

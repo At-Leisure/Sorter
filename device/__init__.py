@@ -20,7 +20,7 @@ default_speed = 10_000
 
 class ModulePropertyUnit:
     """ API模块属性量 """
-    advance_time = ttime()
+    advance_time = 0
     advance_using = False
     x, y = 0, 0
 
@@ -120,18 +120,33 @@ def arm_pick_up(rotation: int, height: int | str | float, spread: int = None, *,
     return consume
 
 
-def arm_throw_down(rotation: int, *, runtime: float = None) -> float:
+def arm_throw_down(rotation: int, kind: Kind, *, runtime: float = None) -> float:
     """ 丢落物体
     ## Return
     `consume` - 此次移动耗时 """
     runtime = ttime() if MPU.time is None else MPU.time
     delay = (0.4, 0.4)
+    # 开挡板
+    match kind.value:
+        case Kind.有害垃圾.value:
+            bf0, bf1 = SID.BAFFLE_0, SID.BAFFLE_1
+        case Kind.其他垃圾.value:
+            bf0, bf1 = SID.BAFFLE_1, SID.BAFFLE_2
+        case Kind.厨余垃圾.value:
+            bf0, bf1 = SID.BAFFLE_2, SID.BAFFLE_3
+        case Kind.回收垃圾.value:
+            bf0, bf1 = SID.BAFFLE_3, SID.BAFFLE_0
+        case _:
+            raise TypeError(f'kind {kind} 类型不符合')
+    baffle_set(OPEN, bf0, runtime=runtime)
+    baffle_set(OPEN, bf1, runtime=runtime)
     # 丢
-    DeviceDriver.arm_updown(0, runtime=runtime)  # 下落
     DeviceDriver.arm_rorate(rotation, runtime=runtime)  # 旋转
+    DeviceDriver.arm_updown(0, runtime=runtime)  # 下落
     DeviceDriver.arm_claw(100, runtime=runtime+sum(delay[:1]))  # 丢下
     # 收
     DeviceDriver.arm_updown('max', runtime=runtime+sum(delay[:2]))  # 回升
+    baffle_set_all(CLOSE, runtime=runtime+sum(delay[:2])+0.3)  # 关挡板
     consume = sum(delay)
     MPU.add_time(consume)
     return consume
@@ -155,8 +170,8 @@ def press_cans(n: int = 3, *, runtime: float = None):
     runtime = ttime() if MPU.time is None else MPU.time
     delay = 3
     for i in range(n):
-        DeviceDriver.yaso_press(9,0.5,0.01,runtime=runtime+delay*i)
-        DeviceDriver.yaso_press(0,0.1,0.01,runtime=runtime+delay*i+0.3)
+        DeviceDriver.yaso_press(9, 0.5, 0.01, runtime=runtime+delay*i)
+        DeviceDriver.yaso_press(0, 0.1, 0.01, runtime=runtime+delay*i+0.3)
 
 
 def sequence_begin(*, runtime: float = None):
@@ -200,4 +215,5 @@ def wait_tkinter(test_func=None) -> tk.Tk:
     btn.place(x=25, y=15, width=100, height=50)
     btn_test.place(x=10+125, y=15, width=150, height=50)
     win.bind('<KeyRelease-space>', command)
-    return win
+    
+    win.mainloop()
